@@ -268,7 +268,6 @@
     "chiseled_quartz_block.png",
     "chiseled_quartz_block_top.png",
     "chiseled_red_sandstone.png",
-    "chiseled_resin_bricks.png",
     "chiseled_sandstone.png",
     "chiseled_stone_bricks.png",
     "chiseled_tuff.png",
@@ -279,7 +278,6 @@
     "chorus_flower_dead.png",
     "chorus_plant.png",
     "clay.png",
-    "closed_eyeblossom.png",
     "coal_block.png",
     "coal_ore.png",
     "coarse_dirt.png",
@@ -338,10 +336,6 @@
     "crafting_table_front.png",
     "crafting_table_side.png",
     "crafting_table_top.png",
-    "creaking_heart.png",
-    "creaking_heart_active.png",
-    "creaking_heart_top.png",
-    "creaking_heart_top_active.png",
     "crimson_door_bottom.png",
     "crimson_door_top.png",
     "crimson_fungus.png",
@@ -691,8 +685,6 @@
     "obsidian.png",
     "ochre_froglight_side.png",
     "ochre_froglight_top.png",
-    "open_eyeblossom.png",
-    "open_eyeblossom_emissive.png",
     "orange_candle.png",
     "orange_candle_lit.png",
     "orange_concrete.png",
@@ -718,20 +710,6 @@
     "oxidized_cut_copper.png",
     "packed_ice.png",
     "packed_mud.png",
-    "pale_hanging_moss.png",
-    "pale_hanging_moss_tip.png",
-    "pale_moss_block.png",
-    "pale_moss_carpet.png",
-    "pale_moss_carpet_side_small.png",
-    "pale_moss_carpet_side_tall.png",
-    "pale_oak_door_bottom.png",
-    "pale_oak_door_top.png",
-    "pale_oak_leaves.png",
-    "pale_oak_log.png",
-    "pale_oak_log_top.png",
-    "pale_oak_planks.png",
-    "pale_oak_sapling.png",
-    "pale_oak_trapdoor.png",
     "pearlescent_froglight_side.png",
     "pearlescent_froglight_top.png",
     "peony_bottom.png",
@@ -869,9 +847,6 @@
     "repeating_command_block_front.png.mcmeta",
     "repeating_command_block_side.png",
     "repeating_command_block_side.png.mcmeta",
-    "resin_block.png",
-    "resin_bricks.png",
-    "resin_clump.png",
     "respawn_anchor_bottom.png",
     "respawn_anchor_side0.png",
     "respawn_anchor_side1.png",
@@ -1012,8 +987,6 @@
     "stripped_mangrove_log_top.png",
     "stripped_oak_log.png",
     "stripped_oak_log_top.png",
-    "stripped_pale_oak_log.png",
-    "stripped_pale_oak_log_top.png",
     "stripped_spruce_log.png",
     "stripped_spruce_log_top.png",
     "stripped_warped_stem.png",
@@ -1161,7 +1134,10 @@
     "yellow_stained_glass_pane_top.png",
     "yellow_terracotta.png",
     "yellow_wool.png"
-  ];
+  ].filter(filename => {
+            const blockName = formatBlockName(filename);
+            return blockName.split(' ').length <= 2;
+        });
 
         function formatBlockName(filename) {
             return filename
@@ -1196,6 +1172,24 @@
             canvas.width = img.width;
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
+
+            // Check for transparent pixels
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            let hasTransparentPixels = false;
+
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] < 255) {
+                    hasTransparentPixels = true;
+                    break;
+                }
+            }
+
+            if (hasTransparentPixels) {
+                // If the image has transparent pixels, reload the game with a new texture
+                location.reload();
+                return;
+            }
 
             function getAverageColor(imageData) {
                 const pixels = imageData.data;
