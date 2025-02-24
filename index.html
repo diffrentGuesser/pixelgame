@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texture Guessing Game</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        h3 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #game-container {
+            text-align: center;
+        }
+
+        #pixelated-images {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            margin: 10px 0;
+            border: 2px solid #333;
+            border-radius: 5px;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            background-color: #6200ea;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #3700b3;
+        }
+
+        #game-result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        img {
+            display: block;
+            margin: 0 auto;
+            width: 600px;  /* Adjust the width for larger size */
+            height: auto;  /* Maintain aspect ratio */
+        }
+
+        #restart-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #6200ea;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;  /* Hide by default */
+        }
+
+        #restart-button:hover {
+            background-color: #3700b3;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h3>Guess the Minecraft Block Texture</h3>
+
+    <div id="game-container">
+        <div id="pixelated-images"></div>
+        <div id="game-result"></div>
+        <input type="text" id="guess" placeholder="Enter your guess (e.g., azalea)" />
+        <button id="submit-guess">Submit Guess</button>
+        <button id="restart-button">Restart Game</button>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const imagesContainer = document.getElementById('pixelated-images');
+        const resultContainer = document.getElementById('game-result');
+        const guessInput = document.getElementById('guess');
+        const submitButton = document.getElementById('submit-guess');
+        const restartButton = document.getElementById('restart-button');
+        
+        // Array of textures with image URL and corresponding name to guess
+        const textures = [
+            { imageURL: 'https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/azalea_top.png', name: 'azalea' },
+            { imageURL: 'https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/grass_block_top.png', name: 'grass block' },
+            { imageURL: 'https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/dirt.png', name: 'dirt' },
+            { imageURL: 'https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/stone.png', name: 'stone' },
+            { imageURL: 'https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/oak_planks.png', name: 'oak plank' },
+            // Add more textures as needed...
+        ];
+
+        // Randomly select a texture from the array
+        const selectedTexture = textures[Math.floor(Math.random() * textures.length)];
+        const imageURL = selectedTexture.imageURL;
+        const correctAnswer = selectedTexture.name;  // Correct answer to guess
+
+        const img = new Image();
+        img.crossOrigin = "Anonymous";  // Allow CORS for the image
+        let pixelationLevels = [2, 4, 8, 16];
+        let currentLevel = 0;  // Start with the 2x2 version
+        let guessedCorrectly = false;
+
+        let restartRequested = false; // Track whether restart was requested
+
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            // Function to get average color for pixelation
+            function getAverageColor(imageData) {
+                const pixels = imageData.data;
+                let r = 0, g = 0, b = 0;
+                for (let i = 0; i < pixels.length; i += 4) {
+                    r += pixels[i];
+                    g += pixels[i + 1];
+                    b += pixels[i + 2];
+                }
+                const pixelCount = pixels.length / 4;
+                r = Math.floor(r / pixelCount);
+                g = Math.floor(g / pixelCount);
+                b = Math.floor(b / pixelCount);
+                return rgb(${r},${g},${b});
+            }
+
+            // Function to create pixelated images
+            function createPixelatedImage(level) {
+                const pixelatedCanvas = document.createElement('canvas');
+                const pixelatedCtx = pixelatedCanvas.getContext('2d');
+                const blockSize = Math.floor(img.width / level);
+                pixelatedCanvas.width = img.width * 8;  // Scale by 8 for much larger size
+                pixelatedCanvas.height = img.height * 8;
+
+                for (let y = 0; y < level; y++) {
+                    for (let x = 0; x < level; x++) {
+                        const imageData = ctx.getImageData(x * blockSize, y * blockSize, blockSize, blockSize);
+                        const color = getAverageColor(imageData);
+                        pixelatedCtx.fillStyle = color;
+                        pixelatedCtx.fillRect(x * blockSize * 8, y * blockSize * 8, blockSize * 8, blockSize * 8);
+                    }
+                }
+
+                return pixelatedCanvas.toDataURL();
+            }
+
+            // Start the game
+            function startGame() {
+                imagesContainer.innerHTML = '';  // Clear previous images
+                resultContainer.innerHTML = '';  // Clear previous result
+                guessInput.value = '';  // Clear the guess input
+                guessedCorrectly = false;  // Reset the guess state
+                restartButton.style.display = 'none';  // Hide the restart button at the start
+
+                // Show the first pixelation level (2x2)
+                showNextLevel();
+
+                // Automatically focus on the input field after restarting the game
+                guessInput.focus();
+            }
+
+            // Show next level image
+            function showNextLevel() {
+                if (currentLevel < pixelationLevels.length) {
+                    const level = pixelationLevels[currentLevel];
+                    const imgElement = document.createElement('img');
+                    imgElement.src = createPixelatedImage(level);
+                    imgElement.alt = ${level}x${level} Pixelated;
+                    imagesContainer.innerHTML = '';  // Clear previous image
+                    imagesContainer.appendChild(imgElement);
+                    currentLevel++;
+                } else {
+                    // Reveal full image if all levels have been shown
+                    imagesContainer.innerHTML = '';  // Clear previous pixelated images
+                    const imgElement = document.createElement('img');
+                    imgElement.src = imageURL;
+                    imgElement.alt = 'Full Image';
+                    imagesContainer.appendChild(imgElement);
+                }
+            }
+
+            // Check the player's guess
+            function checkGuess() {
+                const userGuess = guessInput.value.trim().toLowerCase();
+
+                if (userGuess === correctAnswer) {
+                    guessedCorrectly = true;
+                    resultContainer.innerHTML = 'Correct! You guessed the block!';
+                    
+                    // Hide input and submit button after correct guess
+                    guessInput.style.display = 'none';
+                    submitButton.style.display = 'none';
+                    restartButton.style.display = 'inline-block';  // Show the restart button
+                } else {
+                    if (currentLevel < pixelationLevels.length) {
+                        resultContainer.innerHTML = 'Wrong! Try again...';
+                        showNextLevel();  // Show next pixelated level
+                    } else {
+                        resultContainer.innerHTML = You lost! The correct answer was "${correctAnswer}".;
+                        // Hide input and submit button after losing
+                        guessInput.style.display = 'none';
+                        submitButton.style.display = 'none';
+                        restartButton.style.display = 'inline-block';  // Show the restart button
+                    }
+                }
+
+                // Clear the input field after pressing Enter
+                guessInput.value = '';
+            }
+
+            // Submit guess on button click
+            submitButton.onclick = checkGuess;
+
+            // Submit guess on pressing the "Enter" key
+            guessInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    checkGuess();
+                    // Clear the input field after pressing Enter
+                    guessInput.value = '';
+                }
+            });
+
+            // Restart the game when the restart button is clicked
+            restartButton.onclick = () => {
+                location.reload();  // Reload the page to restart the game
+            };
+
+            // Handle Enter key for restarting
+            let enterPressed = false;
+            window.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && !enterPressed && guessedCorrectly) {
+                    enterPressed = true;  // Mark that Enter was pressed
+                    location.reload();  // Restart the game
+                }
+            });
+
+            window.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    enterPressed = false;  // Reset Enter pressed state
+                }
+            });
+
+            startGame();  // Start the game when the image is loaded
+        };
+
+        img.onerror = () => {
+            console.error("Failed to load image: " + imageURL);
+        };
+
+        img.src = imageURL;  // Use the provided external image URL
+    </script>
+
+</body>
+</html>
