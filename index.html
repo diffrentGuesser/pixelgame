@@ -149,7 +149,7 @@
                 r = Math.floor(r / pixelCount);
                 g = Math.floor(g / pixelCount);
                 b = Math.floor(b / pixelCount);
-                return rgb(${r},${g},${b});
+                return `rgb(${r},${g},${b})`;
             }
 
             // Function to create pixelated images
@@ -193,7 +193,7 @@
                     const level = pixelationLevels[currentLevel];
                     const imgElement = document.createElement('img');
                     imgElement.src = createPixelatedImage(level);
-                    imgElement.alt = ${level}x${level} Pixelated;
+                    imgElement.alt = `${level}x${level} Pixelated`;
                     imagesContainer.innerHTML = '';  // Clear previous image
                     imagesContainer.appendChild(imgElement);
                     currentLevel++;
@@ -224,7 +224,7 @@
                         resultContainer.innerHTML = 'Wrong! Try again...';
                         showNextLevel();  // Show next pixelated level
                     } else {
-                        resultContainer.innerHTML = You lost! The correct answer was "${correctAnswer}".;
+                        resultContainer.innerHTML = `You lost! The correct answer was "${correctAnswer}".`;
                         // Hide input and submit button after losing
                         guessInput.style.display = 'none';
                         submitButton.style.display = 'none';
