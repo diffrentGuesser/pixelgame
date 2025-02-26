@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texture Guessing Game</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #game-container, #login-container, #leaderboard {
+            margin-top: 20px;
+        }
+
+        #pixelated-images {
+            margin: 20px auto;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+        }
+
+        #guess{
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            display: none; /* Hidden by default */
+        }
+
+        #submit-guess{
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            display: none; /* Hidden by default */
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            background-color: #6200ea;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #3700b3;
+        }
+
+        img {
+            display: block;
+            margin: 10px auto;
+            width: 400px;
+            height: auto;
+        }
+
+        #restart-button, #continue-button {
+            display: none; /* Hidden by default */
+        }
+
+        #score-display {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+
+        #reset-score-button {
+            margin-top: 10px;
+            background-color: #ff4444;
+        }
+
+        #reset-score-button:hover {
+            background-color: #cc0000;
+        }
+
+        #leaderboard {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+        }
+
+        #leaderboard h3 {
+            text-align: center;
+        }
+
+        #leaderboard ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #leaderboard li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-container">
+        <h3>Login or Sign Up</h3>
+        <input type="email" id="email" placeholder="Email" />
+        <input type="password" id="password" placeholder="Password" />
+        <button id="login-button">Login</button>
+        <button id="signup-button">Sign Up</button>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <h3>Guess the Minecraft Block Texture</h3>
+        <div id="pixelated-images"></div>
+        <div id="game-result"></div>
+        <input type="text" id="guess" placeholder="Enter your guess (e.g., azalea)" />
+        <button id="submit-guess">Submit Guess</button>
+        <button id="start-game">Start Game</button>
+        <button id="continue-button">Continue</button>
+        <button id="restart-button">Restart Game</button>
+        <div id="score-display">Total Score: 0</div>
+        <div id="rounds-display">Rounds Left: 10</div>
+        <button id="reset-score-button">Reset Score</button>
+    </div>
+
+    <div id="leaderboard">
+        <h3>Global Leaderboard</h3>
+        <ul id="leaderboard-list"></ul>
+    </div>
+
+    <!-- Firebase Modular SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, orderBy, limit, query, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKaOX5mRnHW6s-tUVsHNkmbV1073y8lgo",
+            authDomain: "blockguessr.firebaseapp.com",
+            databaseURL: "https://blockguessr-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "blockguessr",
+            storageBucket: "blockguessr.firebasestorage.app",
+            messagingSenderId: "1073155305789",
+            appId: "1:1073155305789:web:83fc5bb7a200fb1e881554",
+            measurementId: "G-61CSZE4141"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Game variables
+        let totalScore = 0;
+        let roundsLeft = 10;
+        let currentRound = 0;
+        let currentUser = null;
+
+        // DOM elements
+        const loginContainer = document.getElementById('login-container');
+        const gameContainer = document.getElementById('game-container');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('login-button');
+        const signupButton = document.getElementById('signup-button');
+        const leaderboardList = document.getElementById('leaderboard-list');
+
+        const imagesContainer = document.getElementById('pixelated-images');
+        const resultContainer = document.getElementById('game-result');
+        const guessInput = document.getElementById('guess');
+        const submitButton = document.getElementById('submit-guess');
+        const startButton = document.getElementById('start-game');
+        const continueButton = document.getElementById('continue-button');
+        const restartButton = document.getElementById('restart-button');
+        const scoreDisplay = document.getElementById('score-display');
+        const roundsDisplay = document.getElementById('rounds-display');
+        const resetScoreButton = document.getElementById('reset-score-button');
+
+        // Reset game state on page load
+        resetGameState();
+
+        // Login and Sign Up
+        loginButton.onclick = () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    showGame();
+                })
+                .catch((error) => {
+                    alert("Login failed: " + error.message);
+                });
+        };
+
+        signupButton.onclick = () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    showGame();
+                })
+                .catch((error) => {
+                    alert("Sign up failed: " + error.message);
+                });
+        };
+
+        // Show game after login
+        function showGame() {
+            loginContainer.style.display = 'none';
+            gameContainer.style.display = 'block';
+            loadLeaderboard();
+        }
+
+        // Load leaderboard from Firestore
+        async function loadLeaderboard() {
+            try {
+                const scoresRef = collection(db, 'scores');
+                const q = query(scoresRef, orderBy('score', 'desc'), limit(10));
+                const querySnapshot = await getDocs(q);
+                console.log("Leaderboard data loaded:", querySnapshot.docs.length, "entries");
+                leaderboardList.innerHTML = '';
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    leaderboardList.innerHTML += `<li>${data.name}: ${data.score}</li>`;
+                });
+            } catch (error) {
+                console.error("Error loading leaderboard:", error);
+            }
+        }
+
+        // Update score in Firestore (only if the new score is higher)
+        async function updateScoreInFirestore() {
+            if (currentUser) {
+                try {
+                    // Fetch the existing score from Firestore
+                    const userScoreRef = doc(db, 'scores', currentUser.uid);
+                    const userScoreDoc = await getDoc(userScoreRef);
+
+                    let existingScore = 0;
+                    if (userScoreDoc.exists()) {
+                        existingScore = userScoreDoc.data().score;
+                    }
+
+                    // Only update the score if the new score is higher
+                    if (totalScore > existingScore) {
+                        await setDoc(userScoreRef, {
+                            name: currentUser.email,
+                            score: totalScore
+                        });
+                        console.log("New best score saved:", currentUser.email, totalScore);
+                    } else {
+                        console.log("Score not updated (new score is not higher):", currentUser.email, totalScore);
+                    }
+
+                    // Reload the leaderboard
+                    loadLeaderboard();
+                } catch (error) {
+                    console.error("Error updating score in Firestore:", error);
+                }
+            }
+        }
+
+        // Reset game state
+        function resetGameState() {
+            totalScore = 0;
+            roundsLeft = 10;
+            currentRound = 0;
+            scoreDisplay.textContent = `Total Score: ${totalScore}`;
+            roundsDisplay.textContent = `Rounds Left: ${roundsLeft}`;
+        }
+
+        // Game logic (same as before)
+        const textureFiles = [
+            "amethyst_block.png",
+            // Add more textures here
+        ].filter(filename => {
+            const blockName = formatBlockName(filename);
+            return blockName.split(' ').length <= 2;
+        });
+
+        function formatBlockName(filename) {
+            return filename
+                .replace(".png", "") // Remove file extension
+                .replace(/_/g, " ") // Replace underscores with spaces
+                .replace(/\b(top|side|bottom)\b/g, "") // Remove "top", "side", "bottom"
+                .replace(/\s+/g, " ") // Remove extra spaces
+                .trim(); // Trim spaces
+        }
+
+        startButton.onclick = startGame;
+
+        function startGame() {
+            startButton.style.display = 'none';
+            submitButton.style.display = 'inline-block';
+            guessInput.style.display = 'inline-block';
+            nextRound();
+        }
+
+        function nextRound() {
+            if (currentRound >= 10) {
+                endGame();
+                return;
+            }
+
+            const selectedFile = textureFiles[Math.floor(Math.random() * textureFiles.length)];
+            const imageURL = `https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/${selectedFile}`;
+            const correctAnswer = formatBlockName(selectedFile);
+
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            let pixelationLevels = [2, 4, 8, 16];
+            let currentLevel = 0;
+            let guessedCorrectly = false;
+            let enterPressed = false;
+            let attempts = 0;
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+                let hasTransparentPixels = false;
+
+                for (let i = 3; i < pixels.length; i += 4) {
+                    if (pixels[i] < 255) {
+                        hasTransparentPixels = true;
+                        break;
+                    }
+                }
+
+                if (hasTransparentPixels) {
+                    location.reload();
+                    return;
+                }
+
+                function getAverageColor(imageData) {
+                    const pixels = imageData.data;
+                    let r = 0, g = 0, b = 0;
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        r += pixels[i];
+                        g += pixels[i + 1];
+                        b += pixels[i + 2];
+                    }
+                    return `rgb(${Math.floor(r / (pixels.length / 4))},${Math.floor(g / (pixels.length / 4))},${Math.floor(b / (pixels.length / 4))})`;
+                }
+
+                function createPixelatedImage(level) {
+                    const pixelatedCanvas = document.createElement('canvas');
+                    const pixelatedCtx = pixelatedCanvas.getContext('2d');
+                    const blockSize = Math.floor(img.width / level);
+                    pixelatedCanvas.width = img.width * 8;
+                    pixelatedCanvas.height = img.height * 8;
+
+                    for (let y = 0; y < level; y++) {
+                        for (let x = 0; x < level; x++) {
+                            const imageData = ctx.getImageData(x * blockSize, y * blockSize, blockSize, blockSize);
+                            pixelatedCtx.fillStyle = getAverageColor(imageData);
+                            pixelatedCtx.fillRect(x * blockSize * 8, y * blockSize * 8, blockSize * 8, blockSize * 8);
+                        }
+                    }
+
+                    return pixelatedCanvas.toDataURL();
+                }
+
+                function showNextLevel() {
+                    if (currentLevel < pixelationLevels.length) {
+                        const imgElement = document.createElement('img');
+                        imgElement.src = createPixelatedImage(pixelationLevels[currentLevel]);
+                        imagesContainer.innerHTML = '';
+                        imagesContainer.appendChild(imgElement);
+                        currentLevel++;
+                    } else {
+                        imagesContainer.innerHTML = '';
+                        const imgElement = document.createElement('img');
+                        imgElement.src = imageURL;
+                        imagesContainer.appendChild(imgElement);
+                    }
+                }
+
+                function updateScore() {
+                    const points = 10 - attempts; // Adjusted to allow scores over 10
+                    totalScore += points > 0 ? points : 0;
+                    scoreDisplay.textContent = `Total Score: ${totalScore}`;
+                    updateScoreInFirestore();
+                }
+
+                function checkGuess() {
+                    attempts++;
+                    if (guessInput.value.trim().toLowerCase() === correctAnswer) {
+                        guessedCorrectly = true;
+                        resultContainer.innerHTML = '✅ Correct!';
+                        guessInput.style.display = 'none';
+                        submitButton.style.display = 'none';
+                        continueButton.style.display = 'inline-block';
+                        updateScore();
+                    } else {
+                        if (currentLevel < pixelationLevels.length) {
+                            resultContainer.innerHTML = '❌ Wrong! Try again...';
+                            showNextLevel();
+                        } else {
+                            resultContainer.innerHTML = `😢 You lost! It was "${correctAnswer}".`;
+                            guessInput.style.display = 'none';
+                            submitButton.style.display = 'none';
+                            continueButton.style.display = 'inline-block';
+                        }
+                    }
+                    guessInput.value = '';
+                }
+
+                submitButton.onclick = checkGuess;
+
+                guessInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        checkGuess();
+                    }
+                });
+
+                function proceedToNextRound() {
+                    currentRound++;
+                    roundsLeft--;
+                    roundsDisplay.textContent = `Rounds Left: ${roundsLeft}`;
+                    continueButton.style.display = 'none';
+                    guessInput.style.display = 'inline-block';
+                    submitButton.style.display = 'inline-block';
+                    resultContainer.innerHTML = '';
+                    nextRound();
+                }
+
+                continueButton.onclick = proceedToNextRound;
+
+                document.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && continueButton.style.display === 'inline-block') {
+                        proceedToNextRound();
+                    }
+                });
+
+                showNextLevel();
+                guessInput.focus();
+            };
+
+            img.src = imageURL;
+        }
+
+        function endGame() {
+            resultContainer.innerHTML = `🎉 Game Over! Your final score is ${totalScore}.`;
+            guessInput.style.display = 'none';
+            submitButton.style.display = 'none';
+            restartButton.style.display = 'inline-block';
+        }
+
+        restartButton.onclick = () => {
+            resetGameState();
+            startButton.style.display = 'inline-block';
+            restartButton.style.display = 'none';
+            resultContainer.innerHTML = '';
+            imagesContainer.innerHTML = '';
+        };
+
+        resetScoreButton.onclick = () => {
+            totalScore = 0;
+            scoreDisplay.textContent = `Total Score: ${totalScore}`;
+            updateScoreInFirestore();
+        };
+    </script>
+</body>
+</html>
