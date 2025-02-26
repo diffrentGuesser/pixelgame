@@ -1375,7 +1375,7 @@
             return filename
                 .replace(".png", "") // Remove file extension
                 .replace(/_/g, " ") // Replace underscores with spaces
-                .replace(/\b(top|side|bottom|front|back|north|south|east|west|vertical|horizontal)\b/g, "") // Remove "top", "side", "bottom"
+                .replace(/\b(top|side|bottom|front|back|north|south|east|west|vertical|horizontal|on|off)\b/g, "") // Remove "top", "side", "bottom"
                 .replace(/\s+/g, " ") // Remove extra spaces
                 .trim(); // Trim spaces
         }
@@ -1426,9 +1426,10 @@
                 }
 
                 if (hasTransparentPixels) {
-                    location.reload();
-                    return;
-                }
+        console.log("Image has transparent pixels. Selecting a new image...");
+        nextRound(); // Restart the current round with a new image
+        return; // Exit the function to avoid further processing
+    }
 
                 function getAverageColor(imageData) {
                     const pixels = imageData.data;
@@ -1548,3 +1549,4 @@
     </script>
 </body>
 </html>
+
