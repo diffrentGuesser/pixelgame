@@ -1483,27 +1483,32 @@
                 }
 
                 function checkGuess() {
-                    attempts++;
-                    if (guessInput.value.trim().toLowerCase() === correctAnswer) {
-                        guessedCorrectly = true;
-                        resultContainer.innerHTML = '✅ Correct!';
-                        guessInput.style.display = 'none';
-                        submitButton.style.display = 'none';
-                        continueButton.style.display = 'inline-block';
-                        updateScore();
-                    } else {
-                        if (currentLevel < pixelationLevels.length) {
-                            resultContainer.innerHTML = '❌ Wrong! Try again...';
-                            showNextLevel();
-                        } else {
-                            resultContainer.innerHTML = `😢 You lost! It was "${correctAnswer}".`;
-                            guessInput.style.display = 'none';
-                            submitButton.style.display = 'none';
-                            continueButton.style.display = 'inline-block';
-                        }
-                    }
-                    guessInput.value = '';
-                }
+    attempts++;
+    
+    // Remove all spaces from the user's input and the correct answer
+    const userGuess = guessInput.value.trim().toLowerCase().replace(/\s+/g, '');
+    const correctAnswerWithoutSpaces = correctAnswer.toLowerCase().replace(/\s+/g, '');
+
+    if (userGuess === correctAnswerWithoutSpaces) {
+        guessedCorrectly = true;
+        resultContainer.innerHTML = '✅ Correct!';
+        guessInput.style.display = 'none';
+        submitButton.style.display = 'none';
+        continueButton.style.display = 'inline-block';
+        updateScore();
+    } else {
+        if (currentLevel < pixelationLevels.length) {
+            resultContainer.innerHTML = '❌ Wrong! Try again...';
+            showNextLevel();
+        } else {
+            resultContainer.innerHTML = `😢 You lost! It was "${correctAnswer}".`;
+            guessInput.style.display = 'none';
+            submitButton.style.display = 'none';
+            continueButton.style.display = 'inline-block';
+        }
+    }
+    guessInput.value = '';
+}
 
                 submitButton.onclick = checkGuess;
 
