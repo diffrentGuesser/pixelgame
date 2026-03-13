@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -20,263 +21,269 @@
       --gold: #ffd700;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+```
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'VT323', monospace;
-      font-size: 20px;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-    /* Scanlines sit above everything EXCEPT .image-frame which has z-index:10000 */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.07) 2px,
-        rgba(0,0,0,0.07) 4px
-      );
-      pointer-events: none;
-      z-index: 9999;
-    }
+/* Scanlines sit above everything EXCEPT .image-frame which has z-index:10000 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.07) 2px,
+    rgba(0,0,0,0.07) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
 
-    /* The image container punches through the scanline layer */
-    .image-frame {
-      position: relative;
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .game-img-wrap {
-      width: 320px;
-      height: 320px;
-      border: 3px solid var(--border);
-      border-radius: 3px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-    }
-    .game-img-wrap img {
-      width: 320px;
-      height: 320px;
-      image-rendering: pixelated;
-      display: block;
-    }
+/* The image container punches through the scanline layer */
+.image-frame {
+  position: relative;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.game-img-wrap {
+  width: 320px;
+  height: 320px;
+  border: 3px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+.game-img-wrap img {
+  width: 320px;
+  height: 320px;
+  image-rendering: pixelated;
+  display: block;
+}
 
-    .screen {
-      display: none;
-      min-height: 100vh;
-      padding: 20px;
-      max-width: 700px;
-      margin: 0 auto;
-    }
-    .screen.active {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-    }
+.screen {
+  display: none;
+  min-height: 100vh;
+  padding: 20px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 40px;
+  padding-bottom: 40px;
+  gap: 16px;
+}
 
-    .title {
-      font-family: 'Press Start 2P', monospace;
-      font-size: clamp(18px, 5vw, 32px);
-      color: var(--accent);
-      text-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent);
-      letter-spacing: 2px;
-      text-align: center;
-      line-height: 1.5;
-    }
-    .subtitle { color: var(--muted); font-size: 18px; text-align: center; }
+.title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(18px, 5vw, 32px);
+  color: var(--accent);
+  text-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent);
+  letter-spacing: 2px;
+  text-align: center;
+  line-height: 1.5;
+}
+.subtitle { color: var(--muted); font-size: 18px; text-align: center; }
 
-    .card {
-      background: var(--surface);
-      border: 2px solid var(--border);
-      border-radius: 4px;
-      padding: 24px;
-      width: 100%;
-      max-width: 480px;
-      position: relative;
-    }
-    .card::before {
-      content: '';
-      position: absolute;
-      top: -1px; left: 10px; right: 10px; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    }
-    .card-title {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 11px;
-      color: var(--accent);
-      margin-bottom: 16px;
-      letter-spacing: 1px;
-    }
+.card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 10px; right: 10px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.card-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
 
-    input[type="text"],
-    input[type="email"],
-    input[type="password"] {
-      width: 100%;
-      background: #0a0a0f;
-      border: 2px solid var(--border);
-      color: var(--text);
-      font-family: 'VT323', monospace;
-      font-size: 22px;
-      padding: 10px 14px;
-      border-radius: 3px;
-      outline: none;
-      transition: border-color 0.2s;
-      margin-bottom: 10px;
-    }
-    input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
-    input::placeholder { color: var(--muted); }
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  background: #0a0a0f;
+  border: 2px solid var(--border);
+  color: var(--text);
+  font-family: 'VT323', monospace;
+  font-size: 22px;
+  padding: 10px 14px;
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 10px;
+}
+input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+input::placeholder { color: var(--muted); }
 
-    .btn {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 10px;
-      padding: 12px 20px;
-      border: 2px solid;
-      border-radius: 3px;
-      cursor: pointer;
-      letter-spacing: 1px;
-      transition: all 0.15s;
-      width: 100%;
-      margin-top: 4px;
-      position: relative;
-      overflow: hidden;
-    }
-    .btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.05); opacity: 0; transition: opacity 0.15s; }
-    .btn:hover::after { opacity: 1; }
-    .btn:active { transform: translateY(1px); }
-    .btn-primary   { background: transparent; border-color: var(--accent);  color: var(--accent); }
-    .btn-primary:hover  { background: rgba(0,255,136,0.1); box-shadow: 0 0 15px rgba(0,255,136,0.3); }
-    .btn-secondary { background: transparent; border-color: var(--accent2); color: var(--accent2); }
-    .btn-secondary:hover { background: rgba(255,107,53,0.1); box-shadow: 0 0 15px rgba(255,107,53,0.3); }
-    .btn-purple    { background: transparent; border-color: var(--accent3); color: var(--accent3); }
-    .btn-purple:hover { background: rgba(168,85,247,0.1); }
-    .btn-danger    { background: transparent; border-color: var(--wrong);   color: var(--wrong); }
-    .btn-danger:hover { background: rgba(255,68,102,0.1); }
-    .btn:disabled  { opacity: 0.4; cursor: not-allowed; }
-    .btn-row { display: flex; gap: 10px; width: 100%; }
-    .btn-row .btn { flex: 1; }
+.btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 12px 20px;
+  border: 2px solid;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  width: 100%;
+  margin-top: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.05); opacity: 0; transition: opacity 0.15s; }
+.btn:hover::after { opacity: 1; }
+.btn:active { transform: translateY(1px); }
+.btn-primary   { background: transparent; border-color: var(--accent);  color: var(--accent); }
+.btn-primary:hover  { background: rgba(0,255,136,0.1); box-shadow: 0 0 15px rgba(0,255,136,0.3); }
+.btn-secondary { background: transparent; border-color: var(--accent2); color: var(--accent2); }
+.btn-secondary:hover { background: rgba(255,107,53,0.1); box-shadow: 0 0 15px rgba(255,107,53,0.3); }
+.btn-purple    { background: transparent; border-color: var(--accent3); color: var(--accent3); }
+.btn-purple:hover { background: rgba(168,85,247,0.1); }
+.btn-danger    { background: transparent; border-color: var(--wrong);   color: var(--wrong); }
+.btn-danger:hover { background: rgba(255,68,102,0.1); }
+.btn:disabled  { opacity: 0.4; cursor: not-allowed; }
+.btn-row { display: flex; gap: 10px; width: 100%; }
+.btn-row .btn { flex: 1; }
 
-    .divider { width: 100%; border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+.divider { width: 100%; border: none; border-top: 1px solid var(--border); margin: 8px 0; }
 
-    .room-code-display {
-      font-family: 'Press Start 2P', monospace;
-      font-size: clamp(22px, 6vw, 40px);
-      color: var(--gold);
-      text-shadow: 0 0 20px var(--gold);
-      letter-spacing: 0.15em;
-      text-align: center;
-      padding: 16px 8px;
-      width: 100%;
-      overflow: hidden;
-      word-break: break-all;
-    }
+.room-code-display {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(22px, 6vw, 40px);
+  color: var(--gold);
+  text-shadow: 0 0 20px var(--gold);
+  letter-spacing: 0.15em;
+  text-align: center;
+  padding: 16px 8px;
+  width: 100%;
+  overflow: hidden;
+  word-break: break-all;
+}
 
-    .player-list { width: 100%; display: flex; flex-direction: column; gap: 6px; }
-    .player-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      font-size: 18px;
-      transition: border-color 0.3s;
-    }
-    .player-item.guessed { border-color: var(--accent); background: rgba(0,255,136,0.05); }
-    .player-badge { font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 3px 6px; border-radius: 2px; background: var(--accent3); color: white; }
-    .player-score-badge { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--accent); }
+.player-list { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.player-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 18px;
+  transition: border-color 0.3s;
+}
+.player-item.guessed { border-color: var(--accent); background: rgba(0,255,136,0.05); }
+.player-badge { font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 3px 6px; border-radius: 2px; background: var(--accent3); color: white; }
+.player-score-badge { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--accent); }
 
-    .status-bar { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
-    .stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-    .stat-label { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--muted); }
-    .stat-value { font-size: 26px; color: var(--accent); }
+.status-bar { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stat-label { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--muted); }
+.stat-value { font-size: 26px; color: var(--accent); }
 
-    .guess-row { display: flex; gap: 8px; width: 100%; max-width: 480px; }
-    .guess-row input { margin-bottom: 0; flex: 1; }
-    .guess-row .btn { width: auto; flex-shrink: 0; padding: 10px 16px; }
+.guess-row { display: flex; gap: 8px; width: 100%; max-width: 480px; }
+.guess-row input { margin-bottom: 0; flex: 1; }
+.guess-row .btn { width: auto; flex-shrink: 0; padding: 10px 16px; }
 
-    .result-flash { font-size: 24px; text-align: center; min-height: 32px; }
-    .result-flash.correct { color: var(--correct); }
-    .result-flash.wrong   { color: var(--wrong); }
+.result-flash { font-size: 24px; text-align: center; min-height: 32px; }
+.result-flash.correct { color: var(--correct); }
+.result-flash.wrong   { color: var(--wrong); }
 
-    .hint-area { color: var(--muted); font-size: 17px; text-align: center; }
+.hint-area { color: var(--muted); font-size: 17px; text-align: center; }
 
-    .lb-table { width: 100%; border-collapse: collapse; font-size: 20px; }
-    .lb-table th { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--muted); padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-    .lb-table td { padding: 8px 10px; border-bottom: 1px solid rgba(42,42,58,0.5); }
-    .lb-table tr:nth-child(2) td { color: var(--gold); }
-    .lb-table tr:nth-child(3) td { color: #c0c0c0; }
-    .lb-table tr:nth-child(4) td { color: #cd7f32; }
+.lb-table { width: 100%; border-collapse: collapse; font-size: 20px; }
+.lb-table th { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--muted); padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+.lb-table td { padding: 8px 10px; border-bottom: 1px solid rgba(42,42,58,0.5); }
+.lb-table tr:nth-child(2) td { color: var(--gold); }
+.lb-table tr:nth-child(3) td { color: #c0c0c0; }
+.lb-table tr:nth-child(4) td { color: #cd7f32; }
 
-    .waiting-pulse { display: inline-block; color: var(--muted); animation: pulse 1.5s infinite; font-size: 18px; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.waiting-pulse { display: inline-block; color: var(--muted); animation: pulse 1.5s infinite; font-size: 18px; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    .info-msg  { color: var(--muted); font-size: 17px; text-align: center; }
-    .error-msg { color: var(--wrong); font-size: 17px; text-align: center; min-height: 24px; }
+.info-msg  { color: var(--muted); font-size: 17px; text-align: center; }
+.error-msg { color: var(--wrong); font-size: 17px; text-align: center; min-height: 24px; }
 
-    .tabs { display: flex; width: 100%; margin-bottom: 16px; }
-    .tab-btn {
-      flex: 1; padding: 10px;
-      font-family: 'Press Start 2P', monospace; font-size: 9px;
-      background: transparent; border: 1px solid var(--border);
-      color: var(--muted); cursor: pointer; transition: all 0.2s;
-    }
-    .tab-btn:first-child { border-radius: 3px 0 0 3px; }
-    .tab-btn:last-child  { border-radius: 0 3px 3px 0; }
-    .tab-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.07); }
-    .tab-panel { display: none; width: 100%; }
-    .tab-panel.active { display: block; }
+.tabs { display: flex; width: 100%; margin-bottom: 16px; }
+.tab-btn {
+  flex: 1; padding: 10px;
+  font-family: 'Press Start 2P', monospace; font-size: 9px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer; transition: all 0.2s;
+}
+.tab-btn:first-child { border-radius: 3px 0 0 3px; }
+.tab-btn:last-child  { border-radius: 0 3px 3px 0; }
+.tab-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.07); }
+.tab-panel { display: none; width: 100%; }
+.tab-panel.active { display: block; }
 
 
 
-    .round-banner {
-      font-family: 'Press Start 2P', monospace;
-      font-size: clamp(14px,4vw,22px);
-      color: var(--accent3); text-align: center;
-      text-shadow: 0 0 20px var(--accent3);
-      animation: banner-in 0.4s ease-out;
-    }
-    @keyframes banner-in { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+.round-banner {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(14px,4vw,22px);
+  color: var(--accent3); text-align: center;
+  text-shadow: 0 0 20px var(--accent3);
+  animation: banner-in 0.4s ease-out;
+}
+@keyframes banner-in { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
 
-    .loader {
-      width: 40px; height: 40px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to{transform:rotate(360deg)} }
+.loader {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
 
-    select {
-      background: #0a0a0f; border: 2px solid var(--border);
-      color: var(--text); font-family: 'VT323', monospace;
-      font-size: 20px; padding: 4px 8px;
-    }
+select {
+  background: #0a0a0f; border: 2px solid var(--border);
+  color: var(--text); font-family: 'VT323', monospace;
+  font-size: 20px; padding: 4px 8px;
+}
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    @media(max-width:480px) { body{font-size:18px} .card{padding:16px} }
+@media(max-width:480px) { body{font-size:18px} .card{padding:16px} }
+```
+
   </style>
 </head>
 <body>
 
 <!-- ═══ AUTH ═══════════════════════════════════════════════════════════════════ -->
+
 <div id="screen-auth" class="screen active">
   <div class="title">BLOCK<br>GUESSR</div>
   <div class="subtitle">guess the minecraft texture</div>
@@ -287,32 +294,36 @@
       <button class="tab-btn"        id="tab-btn-guest"  onclick="switchTab('guest')">GUEST</button>
     </div>
 
-    <div id="tab-login" class="tab-panel active">
-      <input type="email"    id="auth-email"    placeholder="email@example.com" />
-      <input type="password" id="auth-password" placeholder="password" />
-      <button class="btn btn-primary" onclick="doLogin()">LOGIN</button>
-    </div>
+```
+<div id="tab-login" class="tab-panel active">
+  <input type="email"    id="auth-email"    placeholder="email@example.com" />
+  <input type="password" id="auth-password" placeholder="password" />
+  <button class="btn btn-primary" onclick="doLogin()">LOGIN</button>
+</div>
 
-    <div id="tab-signup" class="tab-panel">
-      <input type="email"    id="signup-email"    placeholder="email@example.com" />
-      <input type="password" id="signup-password" placeholder="password" />
-      <input type="text"     id="signup-name"     placeholder="display name" />
-      <button class="btn btn-primary" onclick="doSignup()">CREATE ACCOUNT</button>
-    </div>
+<div id="tab-signup" class="tab-panel">
+  <input type="email"    id="signup-email"    placeholder="email@example.com" />
+  <input type="password" id="signup-password" placeholder="password" />
+  <input type="text"     id="signup-name"     placeholder="display name" />
+  <button class="btn btn-primary" onclick="doSignup()">CREATE ACCOUNT</button>
+</div>
 
-    <div id="tab-guest" class="tab-panel">
-      <input type="text" id="guest-name" placeholder="your name" />
-      <div class="info-msg" style="margin-bottom:10px;font-size:15px">
-        Scores won't be saved to the leaderboard.
-      </div>
-      <button class="btn btn-secondary" onclick="doGuest()">PLAY AS GUEST</button>
-    </div>
+<div id="tab-guest" class="tab-panel">
+  <input type="text" id="guest-name" placeholder="your name" />
+  <div class="info-msg" style="margin-bottom:10px;font-size:15px">
+    Scores won't be saved to the leaderboard.
+  </div>
+  <button class="btn btn-secondary" onclick="doGuest()">PLAY AS GUEST</button>
+</div>
 
-    <div class="error-msg" id="auth-error"></div>
+<div class="error-msg" id="auth-error"></div>
+```
+
   </div>
 </div>
 
 <!-- ═══ MENU ════════════════════════════════════════════════════════════════════ -->
+
 <div id="screen-menu" class="screen">
   <div class="title">BLOCK<br>GUESSR</div>
   <div id="menu-welcome" class="subtitle"></div>
@@ -333,6 +344,7 @@
 </div>
 
 <!-- ═══ LOBBY HOST ══════════════════════════════════════════════════════════════ -->
+
 <div id="screen-lobby-host" class="screen">
   <div class="title" style="font-size:18px">HOST LOBBY</div>
   <div class="card" style="max-width:360px;text-align:center">
@@ -359,6 +371,7 @@
 </div>
 
 <!-- ═══ LOBBY JOIN ═══════════════════════════════════════════════════════════════ -->
+
 <div id="screen-lobby-join" class="screen">
   <div class="title" style="font-size:18px">WAITING...</div>
   <div class="card" style="max-width:360px;text-align:center">
@@ -374,6 +387,7 @@
 </div>
 
 <!-- ═══ SOLO GAME ════════════════════════════════════════════════════════════════ -->
+
 <div id="screen-solo" class="screen">
   <div class="status-bar">
     <div class="stat"><div class="stat-label">SCORE</div><div class="stat-value" id="solo-score">0</div></div>
@@ -395,6 +409,7 @@
 </div>
 
 <!-- ═══ MULTIPLAYER GAME ═════════════════════════════════════════════════════════ -->
+
 <div id="screen-mp" class="screen">
   <div class="status-bar">
     <div class="stat"><div class="stat-label">ROUND</div>   <div class="stat-value" id="mp-round">1/10</div></div>
@@ -421,6 +436,7 @@
 </div>
 
 <!-- ═══ RESULTS ══════════════════════════════════════════════════════════════════ -->
+
 <div id="screen-results" class="screen">
   <div class="title" style="font-size:20px">GAME OVER!</div>
   <div class="card" style="max-width:480px">
@@ -436,6 +452,7 @@
 </div>
 
 <!-- ═══ JOIN MODAL ════════════════════════════════════════════════════════════════ -->
+
 <div id="join-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:20000;align-items:center;justify-content:center">
   <div class="card" style="max-width:360px">
     <div class="card-title">JOIN ROOM</div>
@@ -452,6 +469,7 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
@@ -460,7 +478,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, getDocs, serverTimestamp, writeBatch
+  onSnapshot, query, orderBy, limit, getDocs, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ── Firebase init ──────────────────────────────────────────────────────────────
@@ -725,17 +743,25 @@ window.gotoMenu = () => {
 };
 
 async function loadLeaderboard() {
+  const tbody = document.getElementById('menu-leaderboard');
+  tbody.innerHTML = '<tr><th>#</th><th>PLAYER</th><th>BEST</th></tr><tr><td colspan="3" style="color:var(--muted);text-align:center;padding:10px">Loading...</td></tr>';
   try {
     const snap = await getDocs(query(collection(db, 'scores'), orderBy('score', 'desc'), limit(10)));
-    const tbody = document.getElementById('menu-leaderboard');
     tbody.innerHTML = '<tr><th>#</th><th>PLAYER</th><th>BEST</th></tr>';
+    if (snap.empty) {
+      tbody.innerHTML += '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:10px">No scores yet!</td></tr>';
+      return;
+    }
     let r = 1;
     snap.forEach(d => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${r++}</td><td>${d.data().name}</td><td>${d.data().score}</td>`;
       tbody.appendChild(tr);
     });
-  } catch(e) { /* leaderboard optional */ }
+  } catch(e) {
+    console.error('Leaderboard error:', e);
+    tbody.innerHTML = '<tr><th>#</th><th>PLAYER</th><th>BEST</th></tr><tr><td colspan="3" style="color:var(--wrong);text-align:center;padding:10px">Failed to load</td></tr>';
+  }
 }
 
 async function saveScore(score) {
@@ -1243,5 +1269,6 @@ window.playAgain = async () => {
   }
 };
 </script>
+
 </body>
 </html>
