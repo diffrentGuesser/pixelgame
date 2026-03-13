@@ -22,6 +22,7 @@
     }
 
 ```
+html { box-sizing: border-box; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -111,6 +112,8 @@ body::before {
   width: 100%;
   max-width: 480px;
   position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .card::before {
   content: '';
@@ -130,6 +133,8 @@ input[type="text"],
 input[type="email"],
 input[type="password"] {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: #0a0a0f;
   border: 2px solid var(--border);
   color: var(--text);
@@ -140,6 +145,7 @@ input[type="password"] {
   outline: none;
   transition: border-color 0.2s;
   margin-bottom: 10px;
+  display: block;
 }
 input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
 input::placeholder { color: var(--muted); }
@@ -230,7 +236,8 @@ input::placeholder { color: var(--muted); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
 .info-msg  { color: var(--muted); font-size: 17px; text-align: center; }
-.error-msg { color: var(--wrong); font-size: 17px; text-align: center; min-height: 24px; }
+.error-msg { color: var(--wrong); font-size: 17px; text-align: center; min-height: 0; }
+.error-msg:not(:empty) { margin-top: 8px; }
 
 .tabs { display: flex; width: 100%; margin-bottom: 16px; }
 .tab-btn {
@@ -1140,7 +1147,7 @@ function renderMPList(players) {
     // Show ✅ if done, animated dots if still playing — no guesses exposed
     const status = p.guessedThisRound
       ? `<span style="color:var(--accent)">✅</span>`
-      : `<span class="waiting-pulse" style="font-size:14px">●●●</span>`;
+      : `<span class="waiting-pulse" style="font-size:14px">···</span>`;
     div.innerHTML = `<span>${p.name} ${hb}</span><span style="display:flex;align-items:center;gap:8px">${status} <span class="player-score-badge">${p.score} pts</span></span>`;
     el.appendChild(div);
   });
