@@ -1,1557 +1,1368 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Texture Guessing Game</title>
-    <style>
-        body {
-            background-color: #121212;
-            color: #f0f0f0;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlockGuessr</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #2a2a3a;
+      --accent: #00ff88;
+      --accent2: #ff6b35;
+      --accent3: #a855f7;
+      --text: #e8e8f0;
+      --muted: #5a5a7a;
+      --correct: #00ff88;
+      --wrong: #ff4466;
+      --gold: #ffd700;
+    }
 
-        #game-container, #login-container, #leaderboard {
-            margin-top: 20px;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        #pixelated-images {
-            margin: 20px auto;
-        }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-        input {
-            padding: 10px;
-            font-size: 16px;
-            width: 300px;
-            border: 2px solid #333;
-            border-radius: 5px;
-            background-color: #1e1e1e;
-            color: #f0f0f0;
-        }
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
 
-        #guess {
-            padding: 10px;
-            font-size: 16px;
-            width: 300px;
-            border: 2px solid #333;
-            border-radius: 5px;
-            background-color: #1e1e1e;
-            color: #f0f0f0;
-            display: none; /* Hidden by default */
-        }
+    .screen {
+      display: none;
+      min-height: 100vh;
+      padding: 20px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
 
-        #submit-guess {
-            padding: 10px;
-            font-size: 16px;
-            width: 300px;
-            border: 2px solid #333;
-            border-radius: 5px;
-            background-color: #1e1e1e;
-            color: #f0f0f0;
-            display: none; /* Hidden by default */
-        }
+    /* Title */
+    .title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(18px, 5vw, 32px);
+      color: var(--accent);
+      text-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent);
+      letter-spacing: 2px;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 18px;
+      text-align: center;
+    }
 
-        button {
-            padding: 10px 15px;
-            font-size: 16px;
-            border: none;
-            background-color: #6200ea;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      padding: 24px;
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 10px;
+      right: 10px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
 
-        button:hover {
-            background-color: #3700b3;
-        }
+    .card-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
 
-        img {
-            display: block;
-            margin: 10px auto;
-            width: 400px;
-            height: auto;
-        }
+    /* Inputs */
+    input[type="text"], input[type="email"], input[type="password"] {
+      width: 100%;
+      background: #0a0a0f;
+      border: 2px solid var(--border);
+      color: var(--text);
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      padding: 10px 14px;
+      border-radius: 3px;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 10px;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+    input::placeholder { color: var(--muted); }
 
-        #restart-button, #continue-button {
-            display: none; /* Hidden by default */
-        }
+    /* Buttons */
+    .btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      padding: 12px 20px;
+      border: 2px solid;
+      border-radius: 3px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+      width: 100%;
+      margin-top: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.05);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .btn:hover::after { opacity: 1; }
+    .btn:active { transform: translateY(1px); }
 
-        #score-display {
-            font-size: 20px;
-            margin-top: 20px;
-        }
+    .btn-primary { background: transparent; border-color: var(--accent); color: var(--accent); }
+    .btn-primary:hover { background: rgba(0,255,136,0.1); box-shadow: 0 0 15px rgba(0,255,136,0.3); }
 
-        #reset-score-button {
-            margin-top: 10px;
-            background-color: #ff4444;
-        }
+    .btn-secondary { background: transparent; border-color: var(--accent2); color: var(--accent2); }
+    .btn-secondary:hover { background: rgba(255,107,53,0.1); box-shadow: 0 0 15px rgba(255,107,53,0.3); }
 
-        #reset-score-button:hover {
-            background-color: #cc0000;
-        }
+    .btn-purple { background: transparent; border-color: var(--accent3); color: var(--accent3); }
+    .btn-purple:hover { background: rgba(168,85,247,0.1); }
 
-        #leaderboard {
-            margin-top: 20px;
-            text-align: left;
-            display: inline-block;
-        }
+    .btn-danger { background: transparent; border-color: var(--wrong); color: var(--wrong); }
+    .btn-danger:hover { background: rgba(255,68,102,0.1); }
 
-        #leaderboard h3 {
-            text-align: center;
-        }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:disabled:hover::after { opacity: 0; }
 
-        #leaderboard ul {
-            list-style-type: none;
-            padding: 0;
-        }
+    .btn-row { display: flex; gap: 10px; width: 100%; }
+    .btn-row .btn { flex: 1; }
 
-        #leaderboard li {
-            margin: 5px 0;
-        }
-    </style>
+    /* Divider */
+    .divider {
+      width: 100%;
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 8px 0;
+    }
+
+    /* Room code display */
+    .room-code-display {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(28px, 8vw, 48px);
+      color: var(--gold);
+      text-shadow: 0 0 20px var(--gold);
+      letter-spacing: 8px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* Player list */
+    .player-list {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .player-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-size: 18px;
+      transition: border-color 0.3s;
+    }
+    .player-item.guessed { border-color: var(--accent); background: rgba(0,255,136,0.05); }
+    .player-badge {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 3px 6px;
+      border-radius: 2px;
+      background: var(--accent3);
+      color: white;
+    }
+    .player-score-badge {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: var(--accent);
+    }
+
+    /* Game area */
+    #game-canvas-container {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #game-canvas-container img, #game-canvas-container canvas {
+      image-rendering: pixelated;
+      width: 320px;
+      height: 320px;
+      border: 3px solid var(--border);
+      border-radius: 3px;
+      display: block;
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .stat-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      color: var(--muted);
+    }
+    .stat-value {
+      font-size: 26px;
+      color: var(--accent);
+    }
+
+    /* Guess form */
+    .guess-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .guess-row input { margin-bottom: 0; flex: 1; }
+    .guess-row .btn { width: auto; flex-shrink: 0; padding: 10px 16px; }
+
+    /* Result flash */
+    .result-flash {
+      font-size: 24px;
+      text-align: center;
+      min-height: 32px;
+      transition: opacity 0.3s;
+    }
+    .result-flash.correct { color: var(--correct); }
+    .result-flash.wrong { color: var(--wrong); }
+
+    /* Hint reveal area */
+    .hint-area {
+      color: var(--muted);
+      font-size: 17px;
+      text-align: center;
+    }
+    .hint-area span { color: var(--accent2); }
+
+    /* Leaderboard table */
+    .lb-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 20px;
+    }
+    .lb-table th {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      color: var(--muted);
+      padding: 6px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .lb-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(42,42,58,0.5);
+    }
+    .lb-table tr:first-child td { color: var(--gold); }
+    .lb-table tr:nth-child(2) td { color: #c0c0c0; }
+    .lb-table tr:nth-child(3) td { color: #cd7f32; }
+
+    /* Waiting for players */
+    .waiting-pulse {
+      display: inline-block;
+      color: var(--muted);
+      animation: pulse 1.5s infinite;
+      font-size: 18px;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* Error / info */
+    .info-msg {
+      color: var(--muted);
+      font-size: 17px;
+      text-align: center;
+    }
+    .error-msg {
+      color: var(--wrong);
+      font-size: 17px;
+      text-align: center;
+      min-height: 24px;
+    }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; width: 100%; margin-bottom: 16px; }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:first-child { border-radius: 3px 0 0 3px; }
+    .tab-btn:last-child { border-radius: 0 3px 3px 0; }
+    .tab-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.07); }
+
+    .tab-panel { display: none; width: 100%; }
+    .tab-panel.active { display: block; }
+
+    /* Chat / guess log */
+    .guess-log {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .guess-log-entry { color: var(--muted); }
+    .guess-log-entry .gname { color: var(--text); }
+    .guess-log-entry.gcorrect .gname { color: var(--correct); }
+    .guess-log-entry.gcorrect { color: var(--correct); }
+
+    /* Round transition */
+    .round-banner {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(14px, 4vw, 22px);
+      color: var(--accent3);
+      text-align: center;
+      text-shadow: 0 0 20px var(--accent3);
+      animation: banner-in 0.4s ease-out;
+    }
+    @keyframes banner-in { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+
+    /* Loading */
+    .loader {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Responsive */
+    @media(max-width:480px) {
+      body { font-size: 18px; }
+      .card { padding: 16px; }
+    }
+  </style>
 </head>
 <body>
-    <div id="login-container">
-        <h3>Login or Sign Up</h3>
-        <input type="email" id="email" placeholder="Email" />
-        <input type="password" id="password" placeholder="Password" />
-        <button id="login-button">Login</button>
-        <button id="signup-button">Sign Up</button>
+
+<!-- ===================== AUTH SCREEN ===================== -->
+<div id="screen-auth" class="screen active">
+  <div class="title">BLOCK<br>GUESSR</div>
+  <div class="subtitle">guess the minecraft texture</div>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('login')">LOGIN</button>
+      <button class="tab-btn" onclick="switchTab('signup')">SIGN UP</button>
     </div>
-
-    <div id="game-container" style="display: none;">
-        <h3>Guess the Minecraft Block Texture</h3>
-        <div id="pixelated-images"></div>
-        <div id="game-result"></div>
-        <input type="text" id="guess" placeholder="Enter your guess (e.g., azalea)" />
-        <button id="submit-guess">Submit Guess</button>
-        <button id="start-game">Start Game</button>
-        <button id="continue-button">Continue</button>
-        <button id="restart-button">Restart Game</button>
-        <div id="score-display">Total Score: 0</div>
-        <div id="rounds-display">Rounds Left: 10</div>
-        <!--- <button id="reset-score-button">Reset Score</button> -->
+    <div id="tab-login" class="tab-panel active">
+      <input type="email" id="auth-email" placeholder="email@example.com" />
+      <input type="password" id="auth-password" placeholder="password" />
+      <button class="btn btn-primary" onclick="doLogin()">LOGIN</button>
     </div>
-
-    <div id="leaderboard">
-        <h3>Global Leaderboard</h3>
-        <ul id="leaderboard-list"></ul>
+    <div id="tab-signup" class="tab-panel">
+      <input type="email" id="signup-email" placeholder="email@example.com" />
+      <input type="password" id="signup-password" placeholder="password" />
+      <input type="text" id="signup-name" placeholder="display name" />
+      <button class="btn btn-primary" onclick="doSignup()">CREATE ACCOUNT</button>
     </div>
+    <div class="error-msg" id="auth-error"></div>
+  </div>
+</div>
 
-    <!-- Firebase Modular SDK -->
-    <script type="module">
-        
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, orderBy, limit, query, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+<!-- ===================== MENU SCREEN ===================== -->
+<div id="screen-menu" class="screen">
+  <div class="title">BLOCK<br>GUESSR</div>
+  <div id="menu-welcome" class="subtitle"></div>
+  <div class="card" style="max-width:340px">
+    <button class="btn btn-primary" onclick="gotoSolo()">▶ SOLO GAME</button>
+    <hr class="divider" style="margin:14px 0"/>
+    <button class="btn btn-secondary" onclick="showCreateRoom()">⊞ HOST ROOM</button>
+    <button class="btn btn-purple" onclick="showJoinRoom()">⊕ JOIN ROOM</button>
+    <hr class="divider" style="margin:14px 0"/>
+    <button class="btn btn-danger" onclick="doLogout()" style="font-size:8px">LOGOUT</button>
+  </div>
+  <div class="card" style="max-width:480px">
+    <div class="card-title">GLOBAL LEADERBOARD</div>
+    <table class="lb-table" id="menu-leaderboard">
+      <tr><th>#</th><th>PLAYER</th><th>BEST</th></tr>
+    </table>
+  </div>
+</div>
 
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCKaOX5mRnHW6s-tUVsHNkmbV1073y8lgo",
-            authDomain: "blockguessr.firebaseapp.com",
-            databaseURL: "https://blockguessr-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "blockguessr",
-            storageBucket: "blockguessr.firebasestorage.app",
-            messagingSenderId: "1073155305789",
-            appId: "1:1073155305789:web:83fc5bb7a200fb1e881554",
-            measurementId: "G-61CSZE4141"
-        };
+<!-- ===================== LOBBY (HOST) SCREEN ===================== -->
+<div id="screen-lobby-host" class="screen">
+  <div class="title" style="font-size:18px">HOST LOBBY</div>
+  <div class="card" style="max-width:360px; text-align:center">
+    <div class="card-title">ROOM CODE</div>
+    <div class="room-code-display" id="lobby-code">----</div>
+    <div class="info-msg">Share this code with friends!</div>
+  </div>
+  <div class="card" style="max-width:360px">
+    <div class="card-title">PLAYERS (<span id="lobby-count">0</span>)</div>
+    <div class="player-list" id="lobby-player-list"></div>
+  </div>
+  <div class="card" style="max-width:360px">
+    <div class="card-title">SETTINGS</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span>Rounds:</span>
+      <select id="lobby-rounds" style="background:#0a0a0f;border:2px solid var(--border);color:var(--text);font-family:'VT323',monospace;font-size:20px;padding:4px 8px">
+        <option>5</option><option selected>10</option><option>15</option><option>20</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="start-room-btn" onclick="startRoom()">START GAME</button>
+    <button class="btn btn-danger" onclick="cancelRoom()" style="margin-top:8px">CANCEL</button>
+    <div class="error-msg" id="lobby-error"></div>
+  </div>
+</div>
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+<!-- ===================== LOBBY (JOINER) SCREEN ===================== -->
+<div id="screen-lobby-join" class="screen">
+  <div class="title" style="font-size:18px">WAITING...</div>
+  <div class="card" style="max-width:360px; text-align:center">
+    <div class="card-title">ROOM CODE</div>
+    <div class="room-code-display" id="join-code-display">----</div>
+    <div class="waiting-pulse">Waiting for host to start...</div>
+  </div>
+  <div class="card" style="max-width:360px">
+    <div class="card-title">PLAYERS (<span id="join-lobby-count">0</span>)</div>
+    <div class="player-list" id="join-player-list"></div>
+  </div>
+  <button class="btn btn-danger" style="max-width:360px" onclick="leaveRoom()">LEAVE ROOM</button>
+</div>
 
-        // Game variables
-        let totalScore = 0;
-        let roundsLeft = 10;
-        let currentRound = 0;
-        let currentUser = null;
+<!-- ===================== SOLO GAME SCREEN ===================== -->
+<div id="screen-solo" class="screen">
+  <div class="status-bar">
+    <div class="stat"><div class="stat-label">SCORE</div><div class="stat-value" id="solo-score">0</div></div>
+    <div class="stat"><div class="stat-label">ROUND</div><div class="stat-value" id="solo-round">0/10</div></div>
+    <div class="stat"><div class="stat-label">TRIES</div><div class="stat-value" id="solo-tries">4</div></div>
+  </div>
+  <div id="game-canvas-container">
+    <div class="loader" id="solo-loader"></div>
+  </div>
+  <div class="hint-area" id="solo-hint"></div>
+  <div class="result-flash" id="solo-result"></div>
+  <div class="guess-row" id="solo-guess-row">
+    <input type="text" id="solo-guess" placeholder="type block name..." />
+    <button class="btn btn-primary" onclick="soloSubmitGuess()">GO</button>
+  </div>
+  <button class="btn btn-secondary" id="solo-continue-btn" style="max-width:320px;display:none" onclick="soloContinue()">CONTINUE ▶</button>
+  <button class="btn btn-primary" id="solo-restart-btn" style="max-width:320px;display:none" onclick="soloRestart()">PLAY AGAIN</button>
+  <button class="btn btn-danger" id="solo-menu-btn" style="max-width:320px;display:none" onclick="gotoMenu()">MAIN MENU</button>
+</div>
 
-        // DOM elements
-        const loginContainer = document.getElementById('login-container');
-        const gameContainer = document.getElementById('game-container');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const loginButton = document.getElementById('login-button');
-        const signupButton = document.getElementById('signup-button');
-        const leaderboardList = document.getElementById('leaderboard-list');
+<!-- ===================== MULTIPLAYER GAME SCREEN ===================== -->
+<div id="screen-mp" class="screen">
+  <div class="status-bar">
+    <div class="stat"><div class="stat-label">ROUND</div><div class="stat-value" id="mp-round">1/10</div></div>
+    <div class="stat"><div class="stat-label">MY SCORE</div><div class="stat-value" id="mp-score">0</div></div>
+    <div class="stat"><div class="stat-label">GUESSED</div><div class="stat-value" id="mp-guessed">0/0</div></div>
+  </div>
+  <div id="mp-round-banner" class="round-banner" style="display:none"></div>
+  <div id="mp-canvas-container" style="width:100%;max-width:400px;display:flex;align-items:center;justify-content:center;">
+    <div class="loader" id="mp-loader"></div>
+  </div>
+  <div class="hint-area" id="mp-hint"></div>
+  <div class="result-flash" id="mp-result"></div>
+  <div class="guess-row" id="mp-guess-row">
+    <input type="text" id="mp-guess" placeholder="type block name..." />
+    <button class="btn btn-primary" id="mp-submit-btn" onclick="mpSubmitGuess()">GO</button>
+  </div>
+  <button class="btn btn-secondary" id="mp-wait-btn" style="max-width:320px;display:none" disabled>
+    <span class="waiting-pulse">Waiting for others...</span>
+  </button>
+  <!-- Players sidebar -->
+  <div class="card" style="max-width:480px;width:100%">
+    <div class="card-title">PLAYERS</div>
+    <div class="player-list" id="mp-player-list"></div>
+  </div>
+  <div class="card" style="max-width:480px;width:100%">
+    <div class="card-title">GUESS LOG</div>
+    <div class="guess-log" id="mp-guess-log"></div>
+  </div>
+</div>
 
-        const imagesContainer = document.getElementById('pixelated-images');
-        const resultContainer = document.getElementById('game-result');
-        const guessInput = document.getElementById('guess');
-        const submitButton = document.getElementById('submit-guess');
-        const startButton = document.getElementById('start-game');
-        const continueButton = document.getElementById('continue-button');
-        const restartButton = document.getElementById('restart-button');
-        const scoreDisplay = document.getElementById('score-display');
-        const roundsDisplay = document.getElementById('rounds-display');
-        const resetScoreButton = document.getElementById('reset-score-button');
+<!-- ===================== RESULTS SCREEN ===================== -->
+<div id="screen-results" class="screen">
+  <div class="title" style="font-size:20px">GAME OVER!</div>
+  <div class="card" style="max-width:480px">
+    <div class="card-title">FINAL SCORES</div>
+    <table class="lb-table" id="results-table">
+      <tr><th>#</th><th>PLAYER</th><th>SCORE</th></tr>
+    </table>
+  </div>
+  <div class="btn-row" style="max-width:480px">
+    <button class="btn btn-primary" onclick="playAgain()">PLAY AGAIN</button>
+    <button class="btn btn-danger" onclick="gotoMenu()">MAIN MENU</button>
+  </div>
+</div>
 
-        // Check if user is already logged in on page load
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                showGame();
-            } else {
-                loginContainer.style.display = 'block';
-                gameContainer.style.display = 'none';
-            }
-        });
+<!-- ===================== JOIN MODAL ===================== -->
+<div id="join-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;display:none;align-items:center;justify-content:center">
+  <div class="card" style="max-width:360px">
+    <div class="card-title">JOIN ROOM</div>
+    <input type="text" id="join-code-input" placeholder="ENTER CODE" style="text-transform:uppercase;letter-spacing:6px;font-size:28px;text-align:center" maxlength="6" />
+    <input type="text" id="join-name-input" placeholder="your name (optional)" />
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="doJoinRoom()">JOIN</button>
+      <button class="btn btn-danger" onclick="hideJoinModal()">CANCEL</button>
+    </div>
+    <div class="error-msg" id="join-error"></div>
+  </div>
+</div>
 
-        // Reset game state on page load
-        resetGameState();
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  onAuthStateChanged, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, limit, getDocs, serverTimestamp, arrayUnion,
+  increment, deleteField, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Login and Sign Up
-        loginButton.onclick = () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            signInWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    localStorage.setItem('isLoggedIn', 'true'); // Store login state
-                    showGame();
-                })
-                .catch((error) => {
-                    alert("Login failed: " + error.message);
-                });
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyCKaOX5mRnHW6s-tUVsHNkmbV1073y8lgo",
+  authDomain: "blockguessr.firebaseapp.com",
+  databaseURL: "https://blockguessr-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "blockguessr",
+  storageBucket: "blockguessr.firebasestorage.app",
+  messagingSenderId: "1073155305789",
+  appId: "1:1073155305789:web:83fc5bb7a200fb1e881554",
+  measurementId: "G-61CSZE4141"
+};
 
-        signupButton.onclick = () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            createUserWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    currentUser = userCredential.user;
-                    localStorage.setItem('isLoggedIn', 'true'); // Store login state
-                    showGame();
-                })
-                .catch((error) => {
-                    alert("Sign up failed: " + error.message);
-                });
-        };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-        // Show game after login
-        function showGame() {
-            loginContainer.style.display = 'none';
-            gameContainer.style.display = 'block';
-            loadLeaderboard();
-        }
+// ─── Texture list (filtered ≤2 word names, no transparent, no .mcmeta) ───────
+const ALL_TEXTURES = [
+  "acacia_leaves","acacia_log","acacia_planks","acacia_sapling","acacia_trapdoor",
+  "activator_rail","allium","amethyst_block","andesite","anvil",
+  "azalea_leaves","azure_bluet","bamboo_block","bamboo_mosaic","bamboo_planks",
+  "basalt_side","beacon","bedrock","bookshelf","bricks","calcite","carrots_stage3",
+  "chain","cherry_leaves","cherry_log","cherry_planks","cherry_sapling","cherry_trapdoor",
+  "clay","coal_block","coal_ore","coarse_dirt","cobbled_deepslate","cobblestone","cobweb",
+  "comparator","conduit","copper_block","copper_grate","copper_ore","cornflower",
+  "dandelion","dark_prismarine","deepslate","deepslate_bricks","deepslate_tiles",
+  "diamond_block","diamond_ore","diorite","dirt","dripstone_block","emerald_block",
+  "emerald_ore","end_stone","farmland","farmland_moist","fern","flower_pot",
+  "gilded_blackstone","glass","glowstone","gold_block","gold_ore","granite",
+  "grass_block_top","gravel","honeycomb_block","ice","iron_bars","iron_block",
+  "iron_ore","kelp","lapis_block","lapis_ore","magma","moss_block","mossy_cobblestone",
+  "mud","mud_bricks","mushroom_stem","netherite_block","netherrack","note_block",
+  "oak_leaves","oak_log","oak_planks","oak_sapling","oak_trapdoor","obsidian",
+  "packed_ice","poppy","prismarine","prismarine_bricks","pumpkin_side","purpur_block",
+  "quartz_bricks","raw_copper_block","raw_gold_block","raw_iron_block","red_sand",
+  "red_sandstone","redstone_block","redstone_lamp","redstone_ore","rooted_dirt",
+  "sand","sandstone","scaffolding_side","sculk","sea_lantern","shroomlight",
+  "slime_block","smooth_basalt","smooth_stone","snow","soul_sand","soul_soil",
+  "spawner","sponge","stone","stone_bricks","sugar_cane","terracotta","tinted_glass",
+  "tuff","tuff_bricks","vine","warped_planks","wet_sponge","white_wool","red_wool",
+  "blue_wool","green_wool","yellow_wool","black_wool","gray_wool","pink_wool",
+  "white_concrete","orange_concrete","magenta_concrete","light_blue_concrete",
+  "yellow_concrete","lime_concrete","pink_concrete","cyan_concrete","purple_concrete",
+  "blue_concrete","brown_concrete","green_concrete","red_concrete","black_concrete",
+  "birch_log","birch_planks","birch_leaves","spruce_log","spruce_planks","spruce_leaves",
+  "jungle_log","jungle_planks","jungle_leaves","dark_oak_log","dark_oak_planks",
+  "dark_oak_leaves","mangrove_log","mangrove_planks","mangrove_leaves",
+  "acacia_log_top","birch_log_top","cherry_log_top","dark_oak_log_top",
+  "blue_ice","packed_mud","deepslate_coal_ore","deepslate_copper_ore",
+  "deepslate_diamond_ore","deepslate_gold_ore","deepslate_iron_ore","deepslate_lapis_ore",
+  "copper_block","oxidized_copper","weathered_copper","exposed_copper","cut_copper",
+  "nether_bricks","red_nether_bricks","soul_torch","torch","lantern","soul_lantern",
+  "bee_nest_side","beehive_side","brain_coral_block","bubble_coral_block",
+  "fire_coral_block","horn_coral_block","tube_coral_block",
+  "dead_brain_coral_block","dead_bubble_coral_block"
+].map(f => f.endsWith('.png') ? f : f + '.png');
 
-        // Load leaderboard from Firestore
-        async function loadLeaderboard() {
-            try {
-                const scoresRef = collection(db, 'scores');
-                const q = query(scoresRef, orderBy('score', 'desc'), limit(10));
-                const querySnapshot = await getDocs(q);
-                console.log("Leaderboard data loaded:", querySnapshot.docs.length, "entries");
-                leaderboardList.innerHTML = '';
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    leaderboardList.innerHTML += `<li>${data.name}: ${data.score}</li>`;
-                });
-            } catch (error) {
-                console.error("Error loading leaderboard:", error);
-            }
-        }
-
-        // Update score in Firestore (only if the new score is higher)
-        async function updateScoreInFirestore() {
-            if (currentUser) {
-                try {
-                    // Fetch the existing score from Firestore
-                    const userScoreRef = doc(db, 'scores', currentUser.uid);
-                    const userScoreDoc = await getDoc(userScoreRef);
-
-                    let existingScore = 0;
-                    if (userScoreDoc.exists()) {
-                        existingScore = userScoreDoc.data().score;
-                    }
-
-                    // Only update the score if the new score is higher
-                    if (totalScore > existingScore) {
-                        await setDoc(userScoreRef, {
-                            name: currentUser.email,
-                            score: totalScore
-                        });
-                        console.log("New best score saved:", currentUser.email, totalScore);
-                    } else {
-                        console.log("Score not updated (new score is not higher):", currentUser.email, totalScore);
-                    }
-
-                    // Reload the leaderboard
-                    loadLeaderboard();
-                } catch (error) {
-                    console.error("Error updating score in Firestore:", error);
-                }
-            }
-        }
-
-        // Reset game state
-        function resetGameState() {
-            totalScore = 0;
-            roundsLeft = 10;
-            currentRound = 0;
-            scoreDisplay.textContent = `Total Score: ${totalScore}`;
-            roundsDisplay.textContent = `Rounds Left: ${roundsLeft}`;
-        }
-
-        // Game logic
-        const textureFiles = [
-    "acacia_door_bottom.png",
-    "acacia_door_top.png",
-    "acacia_leaves.png",
-    "acacia_log.png",
-    "acacia_log_top.png",
-    "acacia_planks.png",
-    "acacia_sapling.png",
-    "acacia_trapdoor.png",
-    "activator_rail.png",
-    "activator_rail_on.png",
-    "allium.png",
-    "amethyst_block.png",
-    "amethyst_cluster.png",
-    "ancient_debris_side.png",
-    "ancient_debris_top.png",
-    "andesite.png",
-    "anvil.png",
-    "anvil_top.png",
-    "attached_melon_stem.png",
-    "attached_pumpkin_stem.png",
-    "azalea_leaves.png",
-    "azalea_plant.png",
-    "azalea_side.png",
-    "azalea_top.png",
-    "azure_bluet.png",
-    "bamboo_block.png",
-    "bamboo_block_top.png",
-    "bamboo_door_bottom.png",
-    "bamboo_door_top.png",
-    "bamboo_fence.png",
-    "bamboo_fence_gate.png",
-    "bamboo_fence_gate_particle.png",
-    "bamboo_fence_particle.png",
-    "bamboo_large_leaves.png",
-    "bamboo_mosaic.png",
-    "bamboo_planks.png",
-    "bamboo_singleleaf.png",
-    "bamboo_small_leaves.png",
-    "bamboo_stage0.png",
-    "bamboo_stalk.png",
-    "bamboo_trapdoor.png",
-    "barrel_bottom.png",
-    "barrel_side.png",
-    "barrel_top.png",
-    "barrel_top_open.png",
-    "basalt_side.png",
-    "basalt_top.png",
-    "beacon.png",
-    "bedrock.png",
-    "bee_nest_bottom.png",
-    "bee_nest_front.png",
-    "bee_nest_front_honey.png",
-    "bee_nest_side.png",
-    "bee_nest_top.png",
-    "beehive_end.png",
-    "beehive_front.png",
-    "beehive_front_honey.png",
-    "beehive_side.png",
-    "beetroots_stage0.png",
-    "beetroots_stage1.png",
-    "beetroots_stage2.png",
-    "beetroots_stage3.png",
-    "bell_bottom.png",
-    "bell_side.png",
-    "bell_top.png",
-    "big_dripleaf_side.png",
-    "big_dripleaf_stem.png",
-    "big_dripleaf_tip.png",
-    "big_dripleaf_top.png",
-    "birch_door_bottom.png",
-    "birch_door_top.png",
-    "birch_leaves.png",
-    "birch_log.png",
-    "birch_log_top.png",
-    "birch_planks.png",
-    "birch_sapling.png",
-    "birch_trapdoor.png",
-    "black_candle.png",
-    "black_candle_lit.png",
-    "black_concrete.png",
-    "black_concrete_powder.png",
-    "black_glazed_terracotta.png",
-    "black_shulker_box.png",
-    "black_stained_glass.png",
-    "black_stained_glass_pane_top.png",
-    "black_terracotta.png",
-    "black_wool.png",
-    "blackstone.png",
-    "blackstone_top.png",
-    "blast_furnace_front.png",
-    "blast_furnace_front_on.png",
-    "blast_furnace_front_on.png.mcmeta",
-    "blast_furnace_side.png",
-    "blast_furnace_top.png",
-    "blue_candle.png",
-    "blue_candle_lit.png",
-    "blue_concrete.png",
-    "blue_concrete_powder.png",
-    "blue_glazed_terracotta.png",
-    "blue_ice.png",
-    "blue_orchid.png",
-    "blue_shulker_box.png",
-    "blue_stained_glass.png",
-    "blue_stained_glass_pane_top.png",
-    "blue_terracotta.png",
-    "blue_wool.png",
-    "bone_block_side.png",
-    "bone_block_top.png",
-    "bookshelf.png",
-    "brain_coral.png",
-    "brain_coral_block.png",
-    "brain_coral_fan.png",
-    "brewing_stand.png",
-    "brewing_stand_base.png",
-    "bricks.png",
-    "brown_candle.png",
-    "brown_candle_lit.png",
-    "brown_concrete.png",
-    "brown_concrete_powder.png",
-    "brown_glazed_terracotta.png",
-    "brown_mushroom.png",
-    "brown_mushroom_block.png",
-    "brown_shulker_box.png",
-    "brown_stained_glass.png",
-    "brown_stained_glass_pane_top.png",
-    "brown_terracotta.png",
-    "brown_wool.png",
-    "bubble_coral.png",
-    "bubble_coral_block.png",
-    "bubble_coral_fan.png",
-    "budding_amethyst.png",
-    "cactus_bottom.png",
-    "cactus_side.png",
-    "cactus_top.png",
-    "cake_bottom.png",
-    "cake_inner.png",
-    "cake_side.png",
-    "cake_top.png",
-    "calcite.png",
-    "calibrated_sculk_sensor_amethyst.png",
-    "calibrated_sculk_sensor_input_side.png",
-    "calibrated_sculk_sensor_top.png",
-    "campfire_fire.png",
-    "campfire_fire.png.mcmeta",
-    "campfire_log.png",
-    "campfire_log_lit.png",
-    "campfire_log_lit.png.mcmeta",
-    "candle.png",
-    "candle_lit.png",
-    "carrots_stage0.png",
-    "carrots_stage1.png",
-    "carrots_stage2.png",
-    "carrots_stage3.png",
-    "cartography_table_side1.png",
-    "cartography_table_side2.png",
-    "cartography_table_side3.png",
-    "cartography_table_top.png",
-    "carved_pumpkin.png",
-    "cauldron_bottom.png",
-    "cauldron_inner.png",
-    "cauldron_side.png",
-    "cauldron_top.png",
-    "cave_vines.png",
-    "cave_vines_lit.png",
-    "cave_vines_plant.png",
-    "cave_vines_plant_lit.png",
-    "chain.png",
-    "chain_command_block_back.png",
-    "chain_command_block_back.png.mcmeta",
-    "chain_command_block_conditional.png",
-    "chain_command_block_conditional.png.mcmeta",
-    "chain_command_block_front.png",
-    "chain_command_block_front.png.mcmeta",
-    "chain_command_block_side.png",
-    "chain_command_block_side.png.mcmeta",
-    "cherry_door_bottom.png",
-    "cherry_door_top.png",
-    "cherry_leaves.png",
-    "cherry_log.png",
-    "cherry_log_top.png",
-    "cherry_planks.png",
-    "cherry_sapling.png",
-    "cherry_trapdoor.png",
-    "chipped_anvil_top.png",
-    "chiseled_bookshelf_empty.png",
-    "chiseled_bookshelf_occupied.png",
-    "chiseled_bookshelf_side.png",
-    "chiseled_bookshelf_top.png",
-    "chiseled_copper.png",
-    "chiseled_deepslate.png",
-    "chiseled_nether_bricks.png",
-    "chiseled_polished_blackstone.png",
-    "chiseled_quartz_block.png",
-    "chiseled_quartz_block_top.png",
-    "chiseled_red_sandstone.png",
-    "chiseled_sandstone.png",
-    "chiseled_stone_bricks.png",
-    "chiseled_tuff.png",
-    "chiseled_tuff_bricks.png",
-    "chiseled_tuff_bricks_top.png",
-    "chiseled_tuff_top.png",
-    "chorus_flower.png",
-    "chorus_flower_dead.png",
-    "chorus_plant.png",
-    "clay.png",
-    "coal_block.png",
-    "coal_ore.png",
-    "coarse_dirt.png",
-    "cobbled_deepslate.png",
-    "cobblestone.png",
-    "cobweb.png",
-    "cocoa_stage0.png",
-    "cocoa_stage1.png",
-    "cocoa_stage2.png",
-    "command_block_back.png",
-    "command_block_back.png.mcmeta",
-    "command_block_conditional.png",
-    "command_block_conditional.png.mcmeta",
-    "command_block_front.png",
-    "command_block_front.png.mcmeta",
-    "command_block_side.png",
-    "command_block_side.png.mcmeta",
-    "comparator.png",
-    "comparator_on.png",
-    "composter_bottom.png",
-    "composter_compost.png",
-    "composter_ready.png",
-    "composter_side.png",
-    "composter_top.png",
-    "conduit.png",
-    "copper_block.png",
-    "copper_bulb.png",
-    "copper_bulb_lit.png",
-    "copper_bulb_lit_powered.png",
-    "copper_bulb_powered.png",
-    "copper_door_bottom.png",
-    "copper_door_top.png",
-    "copper_grate.png",
-    "copper_ore.png",
-    "copper_trapdoor.png",
-    "cornflower.png",
-    "cracked_deepslate_bricks.png",
-    "cracked_deepslate_tiles.png",
-    "cracked_nether_bricks.png",
-    "cracked_polished_blackstone_bricks.png",
-    "cracked_stone_bricks.png",
-    "crafter_bottom.png",
-    "crafter_east.png",
-    "crafter_east_crafting.png",
-    "crafter_east_triggered.png",
-    "crafter_north.png",
-    "crafter_north_crafting.png",
-    "crafter_south.png",
-    "crafter_south_triggered.png",
-    "crafter_top.png",
-    "crafter_top_crafting.png",
-    "crafter_top_triggered.png",
-    "crafter_west.png",
-    "crafter_west_crafting.png",
-    "crafter_west_triggered.png",
-    "crafting_table_front.png",
-    "crafting_table_side.png",
-    "crafting_table_top.png",
-    "crimson_door_bottom.png",
-    "crimson_door_top.png",
-    "crimson_fungus.png",
-    "crimson_nylium.png",
-    "crimson_nylium_side.png",
-    "crimson_planks.png",
-    "crimson_roots.png",
-    "crimson_roots_pot.png",
-    "crimson_stem.png",
-    "crimson_stem.png.mcmeta",
-    "crimson_stem_top.png",
-    "crimson_trapdoor.png",
-    "crying_obsidian.png",
-    "cut_copper.png",
-    "cut_red_sandstone.png",
-    "cut_sandstone.png",
-    "cyan_candle.png",
-    "cyan_candle_lit.png",
-    "cyan_concrete.png",
-    "cyan_concrete_powder.png",
-    "cyan_glazed_terracotta.png",
-    "cyan_shulker_box.png",
-    "cyan_stained_glass.png",
-    "cyan_stained_glass_pane_top.png",
-    "cyan_terracotta.png",
-    "cyan_wool.png",
-    "damaged_anvil_top.png",
-    "dandelion.png",
-    "dark_oak_door_bottom.png",
-    "dark_oak_door_top.png",
-    "dark_oak_leaves.png",
-    "dark_oak_log.png",
-    "dark_oak_log_top.png",
-    "dark_oak_planks.png",
-    "dark_oak_sapling.png",
-    "dark_oak_trapdoor.png",
-    "dark_prismarine.png",
-    "daylight_detector_inverted_top.png",
-    "daylight_detector_side.png",
-    "daylight_detector_top.png",
-    "dead_brain_coral.png",
-    "dead_brain_coral_block.png",
-    "dead_brain_coral_fan.png",
-    "dead_bubble_coral.png",
-    "dead_bubble_coral_block.png",
-    "dead_bubble_coral_fan.png",
-    "dead_bush.png",
-    "dead_fire_coral.png",
-    "dead_fire_coral_block.png",
-    "dead_fire_coral_fan.png",
-    "dead_horn_coral.png",
-    "dead_horn_coral_block.png",
-    "dead_horn_coral_fan.png",
-    "dead_tube_coral.png",
-    "dead_tube_coral_block.png",
-    "dead_tube_coral_fan.png",
-    "debug.png",
-    "debug2.png",
-    "deepslate.png",
-    "deepslate_bricks.png",
-    "deepslate_coal_ore.png",
-    "deepslate_copper_ore.png",
-    "deepslate_diamond_ore.png",
-    "deepslate_emerald_ore.png",
-    "deepslate_gold_ore.png",
-    "deepslate_iron_ore.png",
-    "deepslate_lapis_ore.png",
-    "deepslate_redstone_ore.png",
-    "deepslate_tiles.png",
-    "deepslate_top.png",
-    "destroy_stage_0.png",
-    "destroy_stage_1.png",
-    "destroy_stage_2.png",
-    "destroy_stage_3.png",
-    "destroy_stage_4.png",
-    "destroy_stage_5.png",
-    "destroy_stage_6.png",
-    "destroy_stage_7.png",
-    "destroy_stage_8.png",
-    "destroy_stage_9.png",
-    "detector_rail.png",
-    "detector_rail_on.png",
-    "diamond_block.png",
-    "diamond_ore.png",
-    "diorite.png",
-    "dirt.png",
-    "dirt_path_side.png",
-    "dirt_path_top.png",
-    "dispenser_front.png",
-    "dispenser_front_vertical.png",
-    "dragon_egg.png",
-    "dried_kelp_bottom.png",
-    "dried_kelp_side.png",
-    "dried_kelp_top.png",
-    "dripstone_block.png",
-    "dropper_front.png",
-    "dropper_front_vertical.png",
-    "emerald_block.png",
-    "emerald_ore.png",
-    "enchanting_table_bottom.png",
-    "enchanting_table_side.png",
-    "enchanting_table_top.png",
-    "end_portal_frame_eye.png",
-    "end_portal_frame_side.png",
-    "end_portal_frame_top.png",
-    "end_rod.png",
-    "end_stone.png",
-    "end_stone_bricks.png",
-    "exposed_chiseled_copper.png",
-    "exposed_copper.png",
-    "exposed_copper_bulb.png",
-    "exposed_copper_bulb_lit.png",
-    "exposed_copper_bulb_lit_powered.png",
-    "exposed_copper_bulb_powered.png",
-    "exposed_copper_door_bottom.png",
-    "exposed_copper_door_top.png",
-    "exposed_copper_grate.png",
-    "exposed_copper_trapdoor.png",
-    "exposed_cut_copper.png",
-    "farmland.png",
-    "farmland_moist.png",
-    "fern.png",
-    "fire_0.png",
-    "fire_0.png.mcmeta",
-    "fire_1.png",
-    "fire_1.png.mcmeta",
-    "fire_coral.png",
-    "fire_coral_block.png",
-    "fire_coral_fan.png",
-    "fletching_table_front.png",
-    "fletching_table_side.png",
-    "fletching_table_top.png",
-    "flower_pot.png",
-    "flowering_azalea_leaves.png",
-    "flowering_azalea_side.png",
-    "flowering_azalea_top.png",
-    "frogspawn.png",
-    "frosted_ice_0.png",
-    "frosted_ice_1.png",
-    "frosted_ice_2.png",
-    "frosted_ice_3.png",
-    "furnace_front.png",
-    "furnace_front_on.png",
-    "furnace_side.png",
-    "furnace_top.png",
-    "gilded_blackstone.png",
-    "glass.png",
-    "glass_pane_top.png",
-    "glow_item_frame.png",
-    "glow_lichen.png",
-    "glowstone.png",
-    "gold_block.png",
-    "gold_ore.png",
-    "granite.png",
-    "grass_block_side.png",
-    "grass_block_side_overlay.png",
-    "grass_block_snow.png",
-    "grass_block_top.png",
-    "gravel.png",
-    "gray_candle.png",
-    "gray_candle_lit.png",
-    "gray_concrete.png",
-    "gray_concrete_powder.png",
-    "gray_glazed_terracotta.png",
-    "gray_shulker_box.png",
-    "gray_stained_glass.png",
-    "gray_stained_glass_pane_top.png",
-    "gray_terracotta.png",
-    "gray_wool.png",
-    "green_candle.png",
-    "green_candle_lit.png",
-    "green_concrete.png",
-    "green_concrete_powder.png",
-    "green_glazed_terracotta.png",
-    "green_shulker_box.png",
-    "green_stained_glass.png",
-    "green_stained_glass_pane_top.png",
-    "green_terracotta.png",
-    "green_wool.png",
-    "grindstone_pivot.png",
-    "grindstone_round.png",
-    "grindstone_side.png",
-    "hanging_roots.png",
-    "hay_block_side.png",
-    "hay_block_top.png",
-    "heavy_core.png",
-    "honey_block_bottom.png",
-    "honey_block_side.png",
-    "honey_block_top.png",
-    "honeycomb_block.png",
-    "hopper_inside.png",
-    "hopper_outside.png",
-    "hopper_top.png",
-    "horn_coral.png",
-    "horn_coral_block.png",
-    "horn_coral_fan.png",
-    "ice.png",
-    "iron_bars.png",
-    "iron_block.png",
-    "iron_door_bottom.png",
-    "iron_door_top.png",
-    "iron_ore.png",
-    "iron_trapdoor.png",
-    "item_frame.png",
-    "jack_o_lantern.png",
-    "jigsaw_bottom.png",
-    "jigsaw_lock.png",
-    "jigsaw_side.png",
-    "jigsaw_top.png",
-    "jukebox_side.png",
-    "jukebox_top.png",
-    "jungle_door_bottom.png",
-    "jungle_door_top.png",
-    "jungle_leaves.png",
-    "jungle_log.png",
-    "jungle_log_top.png",
-    "jungle_planks.png",
-    "jungle_sapling.png",
-    "jungle_trapdoor.png",
-    "kelp.png",
-    "kelp.png.mcmeta",
-    "kelp_plant.png",
-    "kelp_plant.png.mcmeta",
-    "ladder.png",
-    "lantern.png",
-    "lantern.png.mcmeta",
-    "lapis_block.png",
-    "lapis_ore.png",
-    "large_amethyst_bud.png",
-    "large_fern_bottom.png",
-    "large_fern_top.png",
-    "lava_flow.png",
-    "lava_flow.png.mcmeta",
-    "lava_still.png",
-    "lava_still.png.mcmeta",
-    "lectern_base.png",
-    "lectern_front.png",
-    "lectern_sides.png",
-    "lectern_top.png",
-    "lever.png",
-    "light_blue_candle.png",
-    "light_blue_candle_lit.png",
-    "light_blue_concrete.png",
-    "light_blue_concrete_powder.png",
-    "light_blue_glazed_terracotta.png",
-    "light_blue_shulker_box.png",
-    "light_blue_stained_glass.png",
-    "light_blue_stained_glass_pane_top.png",
-    "light_blue_terracotta.png",
-    "light_blue_wool.png",
-    "light_gray_candle.png",
-    "light_gray_candle_lit.png",
-    "light_gray_concrete.png",
-    "light_gray_concrete_powder.png",
-    "light_gray_glazed_terracotta.png",
-    "light_gray_shulker_box.png",
-    "light_gray_stained_glass.png",
-    "light_gray_stained_glass_pane_top.png",
-    "light_gray_terracotta.png",
-    "light_gray_wool.png",
-    "lightning_rod.png",
-    "lightning_rod_on.png",
-    "lilac_bottom.png",
-    "lilac_top.png",
-    "lily_of_the_valley.png",
-    "lily_pad.png",
-    "lime_candle.png",
-    "lime_candle_lit.png",
-    "lime_concrete.png",
-    "lime_concrete_powder.png",
-    "lime_glazed_terracotta.png",
-    "lime_shulker_box.png",
-    "lime_stained_glass.png",
-    "lime_stained_glass_pane_top.png",
-    "lime_terracotta.png",
-    "lime_wool.png",
-    "lodestone_side.png",
-    "lodestone_top.png",
-    "loom_bottom.png",
-    "loom_front.png",
-    "loom_side.png",
-    "loom_top.png",
-    "magenta_candle.png",
-    "magenta_candle_lit.png",
-    "magenta_concrete.png",
-    "magenta_concrete_powder.png",
-    "magenta_glazed_terracotta.png",
-    "magenta_shulker_box.png",
-    "magenta_stained_glass.png",
-    "magenta_stained_glass_pane_top.png",
-    "magenta_terracotta.png",
-    "magenta_wool.png",
-    "magma.png",
-    "magma.png.mcmeta",
-    "mangrove_door_bottom.png",
-    "mangrove_door_top.png",
-    "mangrove_leaves.png",
-    "mangrove_log.png",
-    "mangrove_log_top.png",
-    "mangrove_planks.png",
-    "mangrove_propagule.png",
-    "mangrove_propagule_hanging.png",
-    "mangrove_roots_side.png",
-    "mangrove_roots_top.png",
-    "mangrove_trapdoor.png",
-    "medium_amethyst_bud.png",
-    "melon_side.png",
-    "melon_stem.png",
-    "melon_top.png",
-    "moss_block.png",
-    "mossy_cobblestone.png",
-    "mossy_stone_bricks.png",
-    "mud.png",
-    "mud_bricks.png",
-    "muddy_mangrove_roots_side.png",
-    "muddy_mangrove_roots_top.png",
-    "mushroom_block_inside.png",
-    "mushroom_stem.png",
-    "mycelium_side.png",
-    "mycelium_top.png",
-    "nether_bricks.png",
-    "nether_gold_ore.png",
-    "nether_portal.png",
-    "nether_portal.png.mcmeta",
-    "nether_quartz_ore.png",
-    "nether_sprouts.png",
-    "nether_wart_block.png",
-    "nether_wart_stage0.png",
-    "nether_wart_stage1.png",
-    "nether_wart_stage2.png",
-    "netherite_block.png",
-    "netherrack.png",
-    "note_block.png",
-    "oak_door_bottom.png",
-    "oak_door_top.png",
-    "oak_leaves.png",
-    "oak_log.png",
-    "oak_log_top.png",
-    "oak_planks.png",
-    "oak_sapling.png",
-    "oak_trapdoor.png",
-    "observer_back.png",
-    "observer_back_on.png",
-    "observer_front.png",
-    "observer_side.png",
-    "observer_top.png",
-    "obsidian.png",
-    "ochre_froglight_side.png",
-    "ochre_froglight_top.png",
-    "orange_candle.png",
-    "orange_candle_lit.png",
-    "orange_concrete.png",
-    "orange_concrete_powder.png",
-    "orange_glazed_terracotta.png",
-    "orange_shulker_box.png",
-    "orange_stained_glass.png",
-    "orange_stained_glass_pane_top.png",
-    "orange_terracotta.png",
-    "orange_tulip.png",
-    "orange_wool.png",
-    "oxeye_daisy.png",
-    "oxidized_chiseled_copper.png",
-    "oxidized_copper.png",
-    "oxidized_copper_bulb.png",
-    "oxidized_copper_bulb_lit.png",
-    "oxidized_copper_bulb_lit_powered.png",
-    "oxidized_copper_bulb_powered.png",
-    "oxidized_copper_door_bottom.png",
-    "oxidized_copper_door_top.png",
-    "oxidized_copper_grate.png",
-    "oxidized_copper_trapdoor.png",
-    "oxidized_cut_copper.png",
-    "packed_ice.png",
-    "packed_mud.png",
-    "pearlescent_froglight_side.png",
-    "pearlescent_froglight_top.png",
-    "peony_bottom.png",
-    "peony_top.png",
-    "pink_candle.png",
-    "pink_candle_lit.png",
-    "pink_concrete.png",
-    "pink_concrete_powder.png",
-    "pink_glazed_terracotta.png",
-    "pink_petals.png",
-    "pink_petals_stem.png",
-    "pink_shulker_box.png",
-    "pink_stained_glass.png",
-    "pink_stained_glass_pane_top.png",
-    "pink_terracotta.png",
-    "pink_tulip.png",
-    "pink_wool.png",
-    "piston_bottom.png",
-    "piston_inner.png",
-    "piston_side.png",
-    "piston_top.png",
-    "piston_top_sticky.png",
-    "pitcher_crop_bottom.png",
-    "pitcher_crop_bottom_stage_1.png",
-    "pitcher_crop_bottom_stage_2.png",
-    "pitcher_crop_bottom_stage_3.png",
-    "pitcher_crop_bottom_stage_4.png",
-    "pitcher_crop_side.png",
-    "pitcher_crop_top.png",
-    "pitcher_crop_top_stage_3.png",
-    "pitcher_crop_top_stage_4.png",
-    "podzol_side.png",
-    "podzol_top.png",
-    "pointed_dripstone_down_base.png",
-    "pointed_dripstone_down_frustum.png",
-    "pointed_dripstone_down_middle.png",
-    "pointed_dripstone_down_tip.png",
-    "pointed_dripstone_down_tip_merge.png",
-    "pointed_dripstone_up_base.png",
-    "pointed_dripstone_up_frustum.png",
-    "pointed_dripstone_up_middle.png",
-    "pointed_dripstone_up_tip.png",
-    "pointed_dripstone_up_tip_merge.png",
-    "polished_andesite.png",
-    "polished_basalt_side.png",
-    "polished_basalt_top.png",
-    "polished_blackstone.png",
-    "polished_blackstone_bricks.png",
-    "polished_deepslate.png",
-    "polished_diorite.png",
-    "polished_granite.png",
-    "polished_tuff.png",
-    "poppy.png",
-    "potatoes_stage0.png",
-    "potatoes_stage1.png",
-    "potatoes_stage2.png",
-    "potatoes_stage3.png",
-    "potted_azalea_bush_plant.png",
-    "potted_azalea_bush_side.png",
-    "potted_azalea_bush_top.png",
-    "potted_flowering_azalea_bush_plant.png",
-    "potted_flowering_azalea_bush_side.png",
-    "potted_flowering_azalea_bush_top.png",
-    "powder_snow.png",
-    "powered_rail.png",
-    "powered_rail_on.png",
-    "prismarine.png",
-    "prismarine.png.mcmeta",
-    "prismarine_bricks.png",
-    "pumpkin_side.png",
-    "pumpkin_stem.png",
-    "pumpkin_top.png",
-    "purple_candle.png",
-    "purple_candle_lit.png",
-    "purple_concrete.png",
-    "purple_concrete_powder.png",
-    "purple_glazed_terracotta.png",
-    "purple_shulker_box.png",
-    "purple_stained_glass.png",
-    "purple_stained_glass_pane_top.png",
-    "purple_terracotta.png",
-    "purple_wool.png",
-    "purpur_block.png",
-    "purpur_pillar.png",
-    "purpur_pillar_top.png",
-    "quartz_block_bottom.png",
-    "quartz_block_side.png",
-    "quartz_block_top.png",
-    "quartz_bricks.png",
-    "quartz_pillar.png",
-    "quartz_pillar_top.png",
-    "rail.png",
-    "rail_corner.png",
-    "raw_copper_block.png",
-    "raw_gold_block.png",
-    "raw_iron_block.png",
-    "red_candle.png",
-    "red_candle_lit.png",
-    "red_concrete.png",
-    "red_concrete_powder.png",
-    "red_glazed_terracotta.png",
-    "red_mushroom.png",
-    "red_mushroom_block.png",
-    "red_nether_bricks.png",
-    "red_sand.png",
-    "red_sandstone.png",
-    "red_sandstone_bottom.png",
-    "red_sandstone_top.png",
-    "red_shulker_box.png",
-    "red_stained_glass.png",
-    "red_stained_glass_pane_top.png",
-    "red_terracotta.png",
-    "red_tulip.png",
-    "red_wool.png",
-    "redstone_block.png",
-    "redstone_dust_dot.png",
-    "redstone_dust_line0.png",
-    "redstone_dust_line1.png",
-    "redstone_dust_overlay.png",
-    "redstone_lamp.png",
-    "redstone_lamp_on.png",
-    "redstone_ore.png",
-    "redstone_torch.png",
-    "redstone_torch_off.png",
-    "reinforced_deepslate_bottom.png",
-    "reinforced_deepslate_side.png",
-    "reinforced_deepslate_top.png",
-    "repeater.png",
-    "repeater_on.png",
-    "repeating_command_block_back.png",
-    "repeating_command_block_back.png.mcmeta",
-    "repeating_command_block_conditional.png",
-    "repeating_command_block_conditional.png.mcmeta",
-    "repeating_command_block_front.png",
-    "repeating_command_block_front.png.mcmeta",
-    "repeating_command_block_side.png",
-    "repeating_command_block_side.png.mcmeta",
-    "respawn_anchor_bottom.png",
-    "respawn_anchor_side0.png",
-    "respawn_anchor_side1.png",
-    "respawn_anchor_side2.png",
-    "respawn_anchor_side3.png",
-    "respawn_anchor_side4.png",
-    "respawn_anchor_top.png",
-    "respawn_anchor_top.png.mcmeta",
-    "respawn_anchor_top_off.png",
-    "rooted_dirt.png",
-    "rose_bush_bottom.png",
-    "rose_bush_top.png",
-    "sand.png",
-    "sandstone.png",
-    "sandstone_bottom.png",
-    "sandstone_top.png",
-    "scaffolding_bottom.png",
-    "scaffolding_side.png",
-    "scaffolding_top.png",
-    "sculk.png",
-    "sculk.png.mcmeta",
-    "sculk_catalyst_bottom.png",
-    "sculk_catalyst_side.png",
-    "sculk_catalyst_side_bloom.png",
-    "sculk_catalyst_side_bloom.png.mcmeta",
-    "sculk_catalyst_top.png",
-    "sculk_catalyst_top_bloom.png",
-    "sculk_catalyst_top_bloom.png.mcmeta",
-    "sculk_sensor_bottom.png",
-    "sculk_sensor_side.png",
-    "sculk_sensor_tendril_active.png",
-    "sculk_sensor_tendril_active.png.mcmeta",
-    "sculk_sensor_tendril_inactive.png",
-    "sculk_sensor_tendril_inactive.png.mcmeta",
-    "sculk_sensor_top.png",
-    "sculk_shrieker_bottom.png",
-    "sculk_shrieker_can_summon_inner_top.png",
-    "sculk_shrieker_can_summon_inner_top.png.mcmeta",
-    "sculk_shrieker_inner_top.png",
-    "sculk_shrieker_inner_top.png.mcmeta",
-    "sculk_shrieker_side.png",
-    "sculk_shrieker_top.png",
-    "sculk_vein.png",
-    "sculk_vein.png.mcmeta",
-    "sea_lantern.png",
-    "sea_lantern.png.mcmeta",
-    "sea_pickle.png",
-    "seagrass.png",
-    "seagrass.png.mcmeta",
-    "short_grass.png",
-    "shroomlight.png",
-    "shulker_box.png",
-    "slime_block.png",
-    "small_amethyst_bud.png",
-    "small_dripleaf_side.png",
-    "small_dripleaf_stem_bottom.png",
-    "small_dripleaf_stem_top.png",
-    "small_dripleaf_top.png",
-    "smithing_table_bottom.png",
-    "smithing_table_front.png",
-    "smithing_table_side.png",
-    "smithing_table_top.png",
-    "smoker_bottom.png",
-    "smoker_front.png",
-    "smoker_front_on.png",
-    "smoker_front_on.png.mcmeta",
-    "smoker_side.png",
-    "smoker_top.png",
-    "smooth_basalt.png",
-    "smooth_stone.png",
-    "smooth_stone_slab_side.png",
-    "sniffer_egg_not_cracked_bottom.png",
-    "sniffer_egg_not_cracked_east.png",
-    "sniffer_egg_not_cracked_north.png",
-    "sniffer_egg_not_cracked_south.png",
-    "sniffer_egg_not_cracked_top.png",
-    "sniffer_egg_not_cracked_west.png",
-    "sniffer_egg_slightly_cracked_bottom.png",
-    "sniffer_egg_slightly_cracked_east.png",
-    "sniffer_egg_slightly_cracked_north.png",
-    "sniffer_egg_slightly_cracked_south.png",
-    "sniffer_egg_slightly_cracked_top.png",
-    "sniffer_egg_slightly_cracked_west.png",
-    "sniffer_egg_very_cracked_bottom.png",
-    "sniffer_egg_very_cracked_east.png",
-    "sniffer_egg_very_cracked_north.png",
-    "sniffer_egg_very_cracked_south.png",
-    "sniffer_egg_very_cracked_top.png",
-    "sniffer_egg_very_cracked_west.png",
-    "snow.png",
-    "soul_campfire_fire.png",
-    "soul_campfire_fire.png.mcmeta",
-    "soul_campfire_log_lit.png",
-    "soul_campfire_log_lit.png.mcmeta",
-    "soul_fire_0.png",
-    "soul_fire_0.png.mcmeta",
-    "soul_fire_1.png",
-    "soul_fire_1.png.mcmeta",
-    "soul_lantern.png",
-    "soul_lantern.png.mcmeta",
-    "soul_sand.png",
-    "soul_soil.png",
-    "soul_torch.png",
-    "spawner.png",
-    "sponge.png",
-    "spore_blossom.png",
-    "spore_blossom_base.png",
-    "spruce_door_bottom.png",
-    "spruce_door_top.png",
-    "spruce_leaves.png",
-    "spruce_log.png",
-    "spruce_log_top.png",
-    "spruce_planks.png",
-    "spruce_sapling.png",
-    "spruce_trapdoor.png",
-    "stone.png",
-    "stone_bricks.png",
-    "stonecutter_bottom.png",
-    "stonecutter_saw.png",
-    "stonecutter_saw.png.mcmeta",
-    "stonecutter_side.png",
-    "stonecutter_top.png",
-    "stripped_acacia_log.png",
-    "stripped_acacia_log_top.png",
-    "stripped_bamboo_block.png",
-    "stripped_bamboo_block_top.png",
-    "stripped_birch_log.png",
-    "stripped_birch_log_top.png",
-    "stripped_cherry_log.png",
-    "stripped_cherry_log_top.png",
-    "stripped_crimson_stem.png",
-    "stripped_crimson_stem_top.png",
-    "stripped_dark_oak_log.png",
-    "stripped_dark_oak_log_top.png",
-    "stripped_jungle_log.png",
-    "stripped_jungle_log_top.png",
-    "stripped_mangrove_log.png",
-    "stripped_mangrove_log_top.png",
-    "stripped_oak_log.png",
-    "stripped_oak_log_top.png",
-    "stripped_spruce_log.png",
-    "stripped_spruce_log_top.png",
-    "stripped_warped_stem.png",
-    "stripped_warped_stem_top.png",
-    "structure_block.png",
-    "structure_block_corner.png",
-    "structure_block_data.png",
-    "structure_block_load.png",
-    "structure_block_save.png",
-    "sugar_cane.png",
-    "sunflower_back.png",
-    "sunflower_bottom.png",
-    "sunflower_front.png",
-    "sunflower_top.png",
-    "suspicious_gravel_0.png",
-    "suspicious_gravel_1.png",
-    "suspicious_gravel_2.png",
-    "suspicious_gravel_3.png",
-    "suspicious_sand_0.png",
-    "suspicious_sand_1.png",
-    "suspicious_sand_2.png",
-    "suspicious_sand_3.png",
-    "sweet_berry_bush_stage0.png",
-    "sweet_berry_bush_stage1.png",
-    "sweet_berry_bush_stage2.png",
-    "sweet_berry_bush_stage3.png",
-    "tall_grass_bottom.png",
-    "tall_grass_top.png",
-    "tall_seagrass_bottom.png",
-    "tall_seagrass_bottom.png.mcmeta",
-    "tall_seagrass_top.png",
-    "tall_seagrass_top.png.mcmeta",
-    "target_side.png",
-    "target_top.png",
-    "terracotta.png",
-    "tinted_glass.png",
-    "tnt_bottom.png",
-    "tnt_side.png",
-    "tnt_top.png",
-    "torch.png",
-    "torchflower.png",
-    "torchflower_crop_stage0.png",
-    "torchflower_crop_stage1.png",
-    "trial_spawner_bottom.png",
-    "trial_spawner_side_active.png",
-    "trial_spawner_side_active_ominous.png",
-    "trial_spawner_side_inactive.png",
-    "trial_spawner_side_inactive_ominous.png",
-    "trial_spawner_top_active.png",
-    "trial_spawner_top_active_ominous.png",
-    "trial_spawner_top_ejecting_reward.png",
-    "trial_spawner_top_ejecting_reward_ominous.png",
-    "trial_spawner_top_inactive.png",
-    "trial_spawner_top_inactive_ominous.png",
-    "tripwire.png",
-    "tripwire_hook.png",
-    "tube_coral.png",
-    "tube_coral_block.png",
-    "tube_coral_fan.png",
-    "tuff.png",
-    "tuff_bricks.png",
-    "turtle_egg.png",
-    "turtle_egg_slightly_cracked.png",
-    "turtle_egg_very_cracked.png",
-    "twisting_vines.png",
-    "twisting_vines_plant.png",
-    "vault_bottom.png",
-    "vault_bottom_ominous.png",
-    "vault_front_ejecting.png",
-    "vault_front_ejecting_ominous.png",
-    "vault_front_off.png",
-    "vault_front_off_ominous.png",
-    "vault_front_on.png",
-    "vault_front_on_ominous.png",
-    "vault_side_off.png",
-    "vault_side_off_ominous.png",
-    "vault_side_on.png",
-    "vault_side_on_ominous.png",
-    "vault_top.png",
-    "vault_top_ejecting.png",
-    "vault_top_ejecting_ominous.png",
-    "vault_top_ominous.png",
-    "verdant_froglight_side.png",
-    "verdant_froglight_top.png",
-    "vine.png",
-    "warped_door_bottom.png",
-    "warped_door_top.png",
-    "warped_fungus.png",
-    "warped_nylium.png",
-    "warped_nylium_side.png",
-    "warped_planks.png",
-    "warped_roots.png",
-    "warped_roots_pot.png",
-    "warped_stem.png",
-    "warped_stem.png.mcmeta",
-    "warped_stem_top.png",
-    "warped_trapdoor.png",
-    "warped_wart_block.png",
-    "water_flow.png",
-    "water_flow.png.mcmeta",
-    "water_overlay.png",
-    "water_still.png",
-    "water_still.png.mcmeta",
-    "weathered_chiseled_copper.png",
-    "weathered_copper.png",
-    "weathered_copper_bulb.png",
-    "weathered_copper_bulb_lit.png",
-    "weathered_copper_bulb_lit_powered.png",
-    "weathered_copper_bulb_powered.png",
-    "weathered_copper_door_bottom.png",
-    "weathered_copper_door_top.png",
-    "weathered_copper_grate.png",
-    "weathered_copper_trapdoor.png",
-    "weathered_cut_copper.png",
-    "weeping_vines.png",
-    "weeping_vines_plant.png",
-    "wet_sponge.png",
-    "wheat_stage0.png",
-    "wheat_stage1.png",
-    "wheat_stage2.png",
-    "wheat_stage3.png",
-    "wheat_stage4.png",
-    "wheat_stage5.png",
-    "wheat_stage6.png",
-    "wheat_stage7.png",
-    "white_candle.png",
-    "white_candle_lit.png",
-    "white_concrete.png",
-    "white_concrete_powder.png",
-    "white_glazed_terracotta.png",
-    "white_shulker_box.png",
-    "white_stained_glass.png",
-    "white_stained_glass_pane_top.png",
-    "white_terracotta.png",
-    "white_tulip.png",
-    "white_wool.png",
-    "wither_rose.png",
-    "yellow_candle.png",
-    "yellow_candle_lit.png",
-    "yellow_concrete.png",
-    "yellow_concrete_powder.png",
-    "yellow_glazed_terracotta.png",
-    "yellow_shulker_box.png",
-    "yellow_stained_glass.png",
-    "yellow_stained_glass_pane_top.png",
-    "yellow_terracotta.png",
-    "yellow_wool.png"
-  ].filter(filename => {
-            const blockName = formatBlockName(filename);
-            return blockName.split(' ').length <= 2;
-        });
-
-        function formatBlockName(filename) {
-            return filename
-                .replace(".png", "") // Remove file extension
-                .replace(/_/g, " ") // Replace underscores with spaces
-                .replace(/\b(top|side|bottom|front|back|north|south|east|west|vertical|horizontal|on|off|honey|sides)\b/g, "") // Remove "top", "side", "bottom"
-                .replace(/\s+/g, " ") // Remove extra spaces
-                .trim(); // Trim spaces
-        }
-
-        startButton.onclick = startGame;
-
-        function startGame() {
-            startButton.style.display = 'none';
-            submitButton.style.display = 'inline-block';
-            guessInput.style.display = 'inline-block';
-            nextRound();
-        }
-
-        function nextRound() {
-            if (currentRound >= 10) {
-                endGame();
-                return;
-            }
-
-            const selectedFile = textureFiles[Math.floor(Math.random() * textureFiles.length)];
-            const imageURL = `https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/${selectedFile}`;
-            const correctAnswer = formatBlockName(selectedFile);
-
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            let pixelationLevels = [2, 4, 8, 16];
-            let currentLevel = 0;
-            let guessedCorrectly = false;
-            let enterPressed = false;
-            let attempts = 0;
-
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const pixels = imageData.data;
-                let hasTransparentPixels = false;
-
-                for (let i = 3; i < pixels.length; i += 4) {
-                    if (pixels[i] < 255) {
-                        hasTransparentPixels = true;
-                        break;
-                    }
-                }
-
-                if (hasTransparentPixels) {
-        console.log("Image has transparent pixels. Selecting a new image...");
-        nextRound(); // Restart the current round with a new image
-        return; // Exit the function to avoid further processing
-    }
-
-                function getAverageColor(imageData) {
-                    const pixels = imageData.data;
-                    let r = 0, g = 0, b = 0;
-                    for (let i = 0; i < pixels.length; i += 4) {
-                        r += pixels[i];
-                        g += pixels[i + 1];
-                        b += pixels[i + 2];
-                    }
-                    return `rgb(${Math.floor(r / (pixels.length / 4))},${Math.floor(g / (pixels.length / 4))},${Math.floor(b / (pixels.length / 4))})`;
-                }
-
-                function createPixelatedImage(level) {
-                    const pixelatedCanvas = document.createElement('canvas');
-                    const pixelatedCtx = pixelatedCanvas.getContext('2d');
-                    const blockSize = Math.floor(img.width / level);
-                    pixelatedCanvas.width = img.width * 8;
-                    pixelatedCanvas.height = img.height * 8;
-
-                    for (let y = 0; y < level; y++) {
-                        for (let x = 0; x < level; x++) {
-                            const imageData = ctx.getImageData(x * blockSize, y * blockSize, blockSize, blockSize);
-                            pixelatedCtx.fillStyle = getAverageColor(imageData);
-                            pixelatedCtx.fillRect(x * blockSize * 8, y * blockSize * 8, blockSize * 8, blockSize * 8);
-                        }
-                    }
-
-                    return pixelatedCanvas.toDataURL();
-                }
-
-                function showNextLevel() {
-                    if (currentLevel < pixelationLevels.length) {
-                        const imgElement = document.createElement('img');
-                        imgElement.src = createPixelatedImage(pixelationLevels[currentLevel]);
-                        imagesContainer.innerHTML = '';
-                        imagesContainer.appendChild(imgElement);
-                        currentLevel++;
-                    } else {
-                        imagesContainer.innerHTML = '';
-                        const imgElement = document.createElement('img');
-                        imgElement.src = imageURL;
-                        imagesContainer.appendChild(imgElement);
-                    }
-                }
-
-                function updateScore() {
-                    const points = 5 - attempts; // Adjusted to allow scores over 10
-                    totalScore += points > 0 ? points : 0;
-                    scoreDisplay.textContent = `Total Score: ${totalScore}`;
-                    updateScoreInFirestore();
-                }
-
-                function checkGuess() {
-    attempts++;
-    
-    // Remove all spaces from the user's input and the correct answer
-    const userGuess = guessInput.value.trim().toLowerCase().replace(/\s+/g, '');
-    const correctAnswerWithoutSpaces = correctAnswer.toLowerCase().replace(/\s+/g, '');
-
-    if (userGuess === correctAnswerWithoutSpaces) {
-        guessedCorrectly = true;
-        resultContainer.innerHTML = '✅ Correct!';
-        guessInput.style.display = 'none';
-        submitButton.style.display = 'none';
-        continueButton.style.display = 'inline-block';
-        updateScore();
-    } else {
-        if (currentLevel < pixelationLevels.length) {
-            resultContainer.innerHTML = '❌ Wrong! Try again...';
-            showNextLevel();
-        } else {
-            resultContainer.innerHTML = `😢 You lost! It was "${correctAnswer}".`;
-            guessInput.style.display = 'none';
-            submitButton.style.display = 'none';
-            continueButton.style.display = 'inline-block';
-        }
-    }
-    guessInput.value = '';
+function texURL(filename) {
+  return `https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/${filename}`;
+}
+function formatName(filename) {
+  return filename.replace(/\.png$/, '').replace(/_/g, ' ').trim();
 }
 
-                submitButton.onclick = checkGuess;
+// Pick N unique random textures
+function pickTextures(n) {
+  const pool = [...ALL_TEXTURES];
+  const out = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    out.push(pool.splice(idx, 1)[0]);
+  }
+  return out;
+}
 
-                
-                function proceedToNextRound() {
-                    currentRound++;
-                    roundsLeft--;
-                    roundsDisplay.textContent = `Rounds Left: ${roundsLeft}`;
-                    continueButton.style.display = 'none';
-                    guessInput.style.display = 'inline-block';
-                    submitButton.style.display = 'inline-block';
-                    resultContainer.innerHTML = '';
-                    nextRound();
-                }
+// ─── Auth State ───────────────────────────────────────────────────────────────
+let currentUser = null;
+let displayName = '';
+let roomId = null;
+let roomUnsub = null;
+let isHost = false;
+let mpState = {};
+let mpMyScore = 0;
+let mpHasGuessed = false;
+let soloRounds = 10;
+let soloCurrentRound = 0;
+let soloScore = 0;
+let soloCurrentAnswer = '';
+let soloAttempts = 0;
+let soloPixLevel = 0;
+let soloImgEl = null;
+let soloImgPixelData = null;
 
-                continueButton.onclick = proceedToNextRound;
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    displayName = user.displayName || user.email.split('@')[0];
+    showScreen('menu');
+    document.getElementById('menu-welcome').textContent = `Welcome, ${displayName}!`;
+    loadGlobalLeaderboard();
+  } else {
+    showScreen('auth');
+  }
+});
 
-                
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
 
-                showNextLevel();
-                guessInput.focus();
-            };
+window.switchTab = (tab) => {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+};
 
-            img.src = imageURL;
+function setError(id, msg) { const el = document.getElementById(id); if(el) el.textContent = msg; }
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+window.doLogin = async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const pw = document.getElementById('auth-password').value;
+  setError('auth-error', '');
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch(e) { setError('auth-error', e.message); }
+};
+
+window.doSignup = async () => {
+  const email = document.getElementById('signup-email').value.trim();
+  const pw = document.getElementById('signup-password').value;
+  const name = document.getElementById('signup-name').value.trim() || email.split('@')[0];
+  setError('auth-error', '');
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pw);
+    await updateProfile(cred.user, { displayName: name });
+    currentUser = cred.user;
+    displayName = name;
+  } catch(e) { setError('auth-error', e.message); }
+};
+
+window.doLogout = async () => { await signOut(auth); };
+
+// ─── Menu ─────────────────────────────────────────────────────────────────────
+window.gotoMenu = () => {
+  cleanupRoom();
+  showScreen('menu');
+  loadGlobalLeaderboard();
+};
+
+async function loadGlobalLeaderboard() {
+  try {
+    const q = query(collection(db, 'scores'), orderBy('score', 'desc'), limit(10));
+    const snap = await getDocs(q);
+    const tbody = document.getElementById('menu-leaderboard');
+    tbody.innerHTML = '<tr><th>#</th><th>PLAYER</th><th>BEST</th></tr>';
+    let rank = 1;
+    snap.forEach(d => {
+      const data = d.data();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${rank++}</td><td>${data.name}</td><td>${data.score}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) { console.warn('Leaderboard load error', e); }
+}
+
+async function saveScore(score) {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'scores', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists() || snap.data().score < score) {
+      await setDoc(ref, { name: displayName, score });
+    }
+  } catch(e) { console.warn('Save score error', e); }
+}
+
+// ─── Solo Game ────────────────────────────────────────────────────────────────
+window.gotoSolo = () => {
+  soloScore = 0;
+  soloCurrentRound = 0;
+  soloRounds = 10;
+  showScreen('solo');
+  document.getElementById('solo-score').textContent = '0';
+  document.getElementById('solo-round').textContent = '0/' + soloRounds;
+  document.getElementById('solo-continue-btn').style.display = 'none';
+  document.getElementById('solo-restart-btn').style.display = 'none';
+  document.getElementById('solo-menu-btn').style.display = 'none';
+  document.getElementById('solo-guess-row').style.display = 'flex';
+  soloNextRound();
+};
+
+window.soloRestart = () => gotoSolo();
+
+function soloSetImage(imgEl) {
+  const cont = document.getElementById('game-canvas-container');
+  cont.innerHTML = '';
+  imgEl.style.width = '320px';
+  imgEl.style.height = '320px';
+  cont.appendChild(imgEl);
+}
+
+async function soloNextRound() {
+  soloCurrentRound++;
+  soloAttempts = 0;
+  soloPixLevel = 0;
+  document.getElementById('solo-result').textContent = '';
+  document.getElementById('solo-result').className = 'result-flash';
+  document.getElementById('solo-hint').textContent = '';
+  document.getElementById('solo-guess').value = '';
+  document.getElementById('solo-round').textContent = soloCurrentRound + '/' + soloRounds;
+  document.getElementById('solo-tries').textContent = '4';
+  document.getElementById('solo-continue-btn').style.display = 'none';
+  document.getElementById('solo-guess-row').style.display = 'flex';
+
+  const cont = document.getElementById('game-canvas-container');
+  cont.innerHTML = '<div class="loader"></div>';
+
+  const file = ALL_TEXTURES[Math.floor(Math.random() * ALL_TEXTURES.length)];
+  soloCurrentAnswer = formatName(file);
+
+  // Load + pixelate
+  const loaded = await loadAndCheckImage(file);
+  if (!loaded) { soloNextRound(); return; }
+  const { canvas: origCanvas } = loaded;
+  soloImgPixelData = origCanvas;
+
+  // Show most pixelated
+  soloShowLevel(origCanvas, 0);
+  document.getElementById('solo-guess').focus();
+}
+
+function soloShowLevel(origCanvas, level) {
+  const levels = [2, 4, 8, 16];
+  const imgEl = document.createElement('img');
+  if (level < levels.length) {
+    imgEl.src = pixelateCanvas(origCanvas, levels[level]);
+  } else {
+    imgEl.src = origCanvas.toDataURL();
+  }
+  imgEl.style.imageRendering = 'pixelated';
+  soloSetImage(imgEl);
+}
+
+window.soloSubmitGuess = () => {
+  const input = document.getElementById('solo-guess');
+  const guess = input.value.trim().toLowerCase().replace(/\s+/g,'');
+  const correct = soloCurrentAnswer.toLowerCase().replace(/\s+/g,'');
+  if (!guess) return;
+  input.value = '';
+
+  soloAttempts++;
+  const levels = [2, 4, 8, 16];
+  const triesLeft = Math.max(0, levels.length - soloAttempts + 1);
+  document.getElementById('solo-tries').textContent = triesLeft;
+
+  if (guess === correct) {
+    const pts = Math.max(0, 5 - soloAttempts + 1);
+    soloScore += pts;
+    document.getElementById('solo-score').textContent = soloScore;
+    const res = document.getElementById('solo-result');
+    res.textContent = `✅ CORRECT! +${pts} pts`;
+    res.className = 'result-flash correct';
+    // Show real image
+    const imgEl = document.createElement('img');
+    imgEl.src = soloImgPixelData.toDataURL();
+    imgEl.style.imageRendering = 'pixelated';
+    soloSetImage(imgEl);
+    document.getElementById('solo-guess-row').style.display = 'none';
+    document.getElementById('solo-hint').textContent = `It was: ${soloCurrentAnswer}`;
+    if (soloCurrentRound >= soloRounds) {
+      soloEndGame();
+    } else {
+      document.getElementById('solo-continue-btn').style.display = 'inline-block';
+    }
+  } else {
+    // Reveal more
+    soloPixLevel++;
+    if (soloPixLevel <= levels.length) {
+      soloShowLevel(soloImgPixelData, soloPixLevel);
+      const res = document.getElementById('solo-result');
+      res.textContent = soloPixLevel < levels.length ? '❌ Wrong! More detail revealed...' : '❌ Wrong! Last hint...';
+      res.className = 'result-flash wrong';
+      if (soloPixLevel >= levels.length + 1) {
+        // Out of hints
+        const imgEl = document.createElement('img');
+        imgEl.src = soloImgPixelData.toDataURL();
+        imgEl.style.imageRendering = 'pixelated';
+        soloSetImage(imgEl);
+        document.getElementById('solo-result').textContent = `😢 It was: ${soloCurrentAnswer}`;
+        document.getElementById('solo-guess-row').style.display = 'none';
+        document.getElementById('solo-hint').textContent = '';
+        if (soloCurrentRound >= soloRounds) soloEndGame();
+        else document.getElementById('solo-continue-btn').style.display = 'inline-block';
+      }
+    } else {
+      const imgEl = document.createElement('img');
+      imgEl.src = soloImgPixelData.toDataURL();
+      imgEl.style.imageRendering = 'pixelated';
+      soloSetImage(imgEl);
+      document.getElementById('solo-result').textContent = `😢 It was: ${soloCurrentAnswer}`;
+      document.getElementById('solo-guess-row').style.display = 'none';
+      if (soloCurrentRound >= soloRounds) soloEndGame();
+      else document.getElementById('solo-continue-btn').style.display = 'inline-block';
+    }
+  }
+};
+
+window.soloContinue = () => {
+  document.getElementById('solo-continue-btn').style.display = 'none';
+  soloNextRound();
+};
+
+function soloEndGame() {
+  document.getElementById('solo-result').textContent = `🎉 Game Over! Score: ${soloScore}`;
+  document.getElementById('solo-continue-btn').style.display = 'none';
+  document.getElementById('solo-restart-btn').style.display = 'inline-block';
+  document.getElementById('solo-menu-btn').style.display = 'inline-block';
+  saveScore(soloScore);
+}
+
+document.getElementById('solo-guess').addEventListener('keydown', e => {
+  if (e.key === 'Enter') soloSubmitGuess();
+});
+
+// ─── Image Utilities ──────────────────────────────────────────────────────────
+function loadAndCheckImage(filename) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let hasTransparent = false;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] < 200) { hasTransparent = true; break; }
+      }
+      if (hasTransparent) { resolve(null); return; }
+      resolve({ canvas, img });
+    };
+    img.onerror = () => resolve(null);
+    img.src = texURL(filename);
+  });
+}
+
+function pixelateCanvas(origCanvas, level) {
+  const W = origCanvas.width, H = origCanvas.height;
+  const ctx = origCanvas.getContext('2d');
+  const blockW = Math.ceil(W / level);
+  const blockH = Math.ceil(H / level);
+  const out = document.createElement('canvas');
+  out.width = W * 8; out.height = H * 8;
+  const outCtx = out.getContext('2d');
+
+  for (let gy = 0; gy < level; gy++) {
+    for (let gx = 0; gx < level; gx++) {
+      const sx = gx * blockW, sy = gy * blockH;
+      const sw = Math.min(blockW, W - sx), sh = Math.min(blockH, H - sy);
+      if (sw <= 0 || sh <= 0) continue;
+      const d = ctx.getImageData(sx, sy, sw, sh).data;
+      let r=0,g=0,b=0,cnt=d.length/4;
+      for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];}
+      outCtx.fillStyle = `rgb(${Math.round(r/cnt)},${Math.round(g/cnt)},${Math.round(b/cnt)})`;
+      outCtx.fillRect(gx * blockW * 8, gy * blockH * 8, sw * 8, sh * 8);
+    }
+  }
+  return out.toDataURL();
+}
+
+// ─── Multiplayer Rooms ────────────────────────────────────────────────────────
+function generateCode() {
+  return Math.random().toString(36).substring(2,8).toUpperCase();
+}
+
+window.showCreateRoom = async () => {
+  const code = generateCode();
+  roomId = code;
+  isHost = true;
+  const rounds = 10;
+
+  await setDoc(doc(db, 'rooms', code), {
+    host: currentUser.uid,
+    hostName: displayName,
+    code,
+    status: 'lobby',
+    rounds,
+    currentRound: 0,
+    textures: [],
+    createdAt: serverTimestamp()
+  });
+
+  await setDoc(doc(db, 'rooms', code, 'players', currentUser.uid), {
+    name: displayName,
+    score: 0,
+    guessedThisRound: false,
+    joinedAt: serverTimestamp()
+  });
+
+  document.getElementById('lobby-code').textContent = code;
+  showScreen('lobby-host');
+  setError('lobby-error', '');
+  subscribeRoom();
+};
+
+window.showJoinRoom = () => {
+  document.getElementById('join-modal').style.display = 'flex';
+  document.getElementById('join-code-input').value = '';
+  document.getElementById('join-name-input').value = '';
+  setError('join-error', '');
+};
+window.hideJoinModal = () => {
+  document.getElementById('join-modal').style.display = 'none';
+};
+
+window.doJoinRoom = async () => {
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  const name = document.getElementById('join-name-input').value.trim() || displayName;
+  if (!code) { setError('join-error', 'Enter a room code.'); return; }
+
+  try {
+    const roomSnap = await getDoc(doc(db, 'rooms', code));
+    if (!roomSnap.exists()) { setError('join-error', 'Room not found.'); return; }
+    const roomData = roomSnap.data();
+    if (roomData.status !== 'lobby') { setError('join-error', 'Game already started.'); return; }
+
+    roomId = code;
+    isHost = false;
+    displayName = name;
+
+    await setDoc(doc(db, 'rooms', code, 'players', currentUser.uid), {
+      name,
+      score: 0,
+      guessedThisRound: false,
+      joinedAt: serverTimestamp()
+    });
+
+    hideJoinModal();
+    document.getElementById('join-code-display').textContent = code;
+    showScreen('lobby-join');
+    subscribeRoom();
+  } catch(e) { setError('join-error', e.message); }
+};
+
+window.startRoom = async () => {
+  const rounds = parseInt(document.getElementById('lobby-rounds').value);
+  const textures = pickTextures(rounds);
+  try {
+    await updateDoc(doc(db, 'rooms', roomId), {
+      status: 'playing',
+      rounds,
+      textures,
+      currentRound: 1,
+      roundStartedAt: serverTimestamp()
+    });
+  } catch(e) { setError('lobby-error', e.message); }
+};
+
+window.cancelRoom = async () => {
+  if (roomId) {
+    try { await deleteDoc(doc(db, 'rooms', roomId)); } catch(e){}
+  }
+  cleanupRoom();
+  showScreen('menu');
+};
+
+window.leaveRoom = async () => {
+  if (roomId) {
+    try {
+      await deleteDoc(doc(db, 'rooms', roomId, 'players', currentUser.uid));
+    } catch(e){}
+  }
+  cleanupRoom();
+  showScreen('menu');
+};
+
+function cleanupRoom() {
+  if (roomUnsub) { roomUnsub(); roomUnsub = null; }
+  roomId = null;
+  isHost = false;
+  mpState = {};
+  mpMyScore = 0;
+  mpHasGuessed = false;
+}
+
+// ─── Room Subscription ────────────────────────────────────────────────────────
+function subscribeRoom() {
+  if (roomUnsub) roomUnsub();
+
+  const roomRef = doc(db, 'rooms', roomId);
+  const playersRef = collection(db, 'rooms', roomId, 'players');
+
+  let prevRound = -1;
+  let prevStatus = '';
+  let mpImageLoaded = false;
+  let mpCurrentCanvas = null;
+  let mpPixLevel = 0;
+  let revealTimer = null;
+
+  const unsubRoom = onSnapshot(roomRef, async (snap) => {
+    if (!snap.exists()) {
+      // Room deleted
+      cleanupRoom();
+      alert('Room was closed.');
+      showScreen('menu');
+      return;
+    }
+    const data = snap.data();
+    mpState = data;
+
+    if (data.status === 'lobby') {
+      // Update lobby player list (common)
+    }
+
+    if (data.status === 'playing') {
+      const round = data.currentRound;
+      const totalRounds = data.rounds;
+
+      // Host reveals picture progressively — actually, all clients show independently
+      if (prevStatus !== 'playing' || prevRound !== round) {
+        prevStatus = 'playing';
+        prevRound = round;
+        mpHasGuessed = false;
+        mpImageLoaded = false;
+        mpCurrentCanvas = null;
+        mpPixLevel = 0;
+        if (revealTimer) clearInterval(revealTimer);
+
+        document.getElementById('mp-round').textContent = round + '/' + totalRounds;
+        document.getElementById('mp-result').textContent = '';
+        document.getElementById('mp-result').className = 'result-flash';
+        document.getElementById('mp-guess').value = '';
+        document.getElementById('mp-hint').textContent = '';
+        document.getElementById('mp-guess-row').style.display = 'flex';
+        document.getElementById('mp-wait-btn').style.display = 'none';
+        document.getElementById('mp-submit-btn').disabled = false;
+
+        // Show round banner
+        const banner = document.getElementById('mp-round-banner');
+        banner.textContent = `ROUND ${round}`;
+        banner.style.display = 'block';
+        setTimeout(() => { banner.style.display = 'none'; }, 2000);
+
+        if (document.getElementById('screen-mp').classList.contains('active') === false) {
+          showScreen('mp');
         }
 
-        function endGame() {
-            resultContainer.innerHTML = `🎉 Game Over! Your final score is ${totalScore}.`;
-            guessInput.style.display = 'none';
-            submitButton.style.display = 'none';
-            restartButton.style.display = 'inline-block';
+        // Load image
+        const file = data.textures[round - 1];
+        const cont = document.getElementById('mp-canvas-container');
+        cont.innerHTML = '<div class="loader"></div>';
+
+        const loaded = await loadAndCheckImage(file);
+        if (!loaded) {
+          // Fallback: try next texture in list
+          cont.innerHTML = '<div style="color:var(--wrong)">Image load error</div>';
+          return;
         }
+        mpCurrentCanvas = loaded.canvas;
+        mpImageLoaded = true;
 
-        restartButton.onclick = () => {
-            location.reload();
-        };
+        // Show progressively
+        const pixLevels = [2, 4, 8, 16];
+        mpPixLevel = 0;
+        showMPLevel(cont, mpCurrentCanvas, pixLevels[0]);
 
-        resetScoreButton.onclick = () => {
-            totalScore = 0;
-            scoreDisplay.textContent = `Total Score: ${totalScore}`;
-            updateScoreInFirestore();
-        };
-    </script>
+        revealTimer = setInterval(() => {
+          if (mpHasGuessed) { clearInterval(revealTimer); return; }
+          mpPixLevel++;
+          if (mpPixLevel < pixLevels.length) {
+            showMPLevel(cont, mpCurrentCanvas, pixLevels[mpPixLevel]);
+          } else {
+            clearInterval(revealTimer);
+            // Show full image after all hints
+            showMPLevel(cont, mpCurrentCanvas, null);
+          }
+        }, 8000); // Reveal more every 8 seconds
+      }
+    }
+
+    if (data.status === 'results') {
+      if (revealTimer) clearInterval(revealTimer);
+      showResults(data);
+    }
+  });
+
+  const unsubPlayers = onSnapshot(query(playersRef, orderBy('score', 'desc')), (snap) => {
+    const players = [];
+    snap.forEach(d => players.push({ id: d.id, ...d.data() }));
+    updateLobbyUI(players);
+    updateMPPlayerList(players);
+  });
+
+  // Guess log
+  const guessLogRef = collection(db, 'rooms', roomId, 'guesses');
+  const unsubGuesses = onSnapshot(query(guessLogRef, orderBy('ts', 'asc'), limit(50)), snap => {
+    const log = document.getElementById('mp-guess-log');
+    log.innerHTML = '';
+    snap.forEach(d => {
+      const data = d.data();
+      const entry = document.createElement('div');
+      entry.className = 'guess-log-entry' + (data.correct ? ' gcorrect' : '');
+      entry.innerHTML = `<span class="gname">${data.playerName}</span>: ${data.correct ? '✅ guessed it!' : `"${data.guess}"`}`;
+      log.appendChild(entry);
+    });
+    log.scrollTop = log.scrollHeight;
+  });
+
+  roomUnsub = () => { unsubRoom(); unsubPlayers(); unsubGuesses(); };
+}
+
+function showMPLevel(cont, origCanvas, level) {
+  const imgEl = document.createElement('img');
+  if (level === null) {
+    imgEl.src = origCanvas.toDataURL();
+  } else {
+    imgEl.src = pixelateCanvas(origCanvas, level);
+  }
+  imgEl.style.imageRendering = 'pixelated';
+  imgEl.style.width = '320px';
+  imgEl.style.height = '320px';
+  imgEl.style.border = '3px solid var(--border)';
+  imgEl.style.borderRadius = '3px';
+  cont.innerHTML = '';
+  cont.appendChild(imgEl);
+}
+
+function updateLobbyUI(players) {
+  ['lobby-player-list','join-player-list'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+    players.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'player-item';
+      const badge = p.id === mpState.host ? '<span class="player-badge">HOST</span>' : '';
+      div.innerHTML = `<span>${p.name}</span>${badge}`;
+      el.appendChild(div);
+    });
+  });
+  const count = players.length;
+  const lc = document.getElementById('lobby-count');
+  const jlc = document.getElementById('join-lobby-count');
+  if(lc) lc.textContent = count;
+  if(jlc) jlc.textContent = count;
+}
+
+function updateMPPlayerList(players) {
+  const el = document.getElementById('mp-player-list');
+  if (!el) return;
+  el.innerHTML = '';
+  let guessedCount = 0;
+  players.forEach(p => {
+    if (p.guessedThisRound) guessedCount++;
+    const div = document.createElement('div');
+    div.className = 'player-item' + (p.guessedThisRound ? ' guessed' : '');
+    const hostBadge = p.id === mpState.host ? '<span class="player-badge">HOST</span>' : '';
+    const scoreBadge = `<span class="player-score-badge">${p.score} pts</span>`;
+    div.innerHTML = `<span>${p.name} ${hostBadge}</span>${scoreBadge}`;
+    el.appendChild(div);
+  });
+  document.getElementById('mp-guessed').textContent = `${guessedCount}/${players.length}`;
+
+  // Check if all players guessed (host advances round)
+  if (isHost && mpState.status === 'playing' && guessedCount > 0 && guessedCount >= players.length) {
+    setTimeout(() => advanceRound(players), 2000);
+  }
+}
+
+window.mpSubmitGuess = async () => {
+  if (mpHasGuessed || !mpState.textures) return;
+  const input = document.getElementById('mp-guess');
+  const guess = input.value.trim();
+  if (!guess) return;
+  input.value = '';
+
+  const round = mpState.currentRound;
+  const file = mpState.textures[round - 1];
+  const answer = formatName(file).toLowerCase().replace(/\s+/g,'');
+  const userGuess = guess.toLowerCase().replace(/\s+/g,'');
+  const correct = userGuess === answer;
+
+  // Calculate points based on how pixelated it still is (mpPixLevel)
+  const levels = [2,4,8,16];
+  const pts = correct ? Math.max(1, levels.length + 1 - Math.min(mpState._pixLevel || 0, levels.length)) : 0;
+
+  // Log the guess
+  await setDoc(doc(collection(db, 'rooms', roomId, 'guesses')), {
+    playerName: displayName,
+    guess: correct ? '[correct]' : guess,
+    correct,
+    round,
+    ts: serverTimestamp()
+  });
+
+  if (correct) {
+    mpHasGuessed = true;
+    mpMyScore += pts;
+    document.getElementById('mp-score').textContent = mpMyScore;
+    const res = document.getElementById('mp-result');
+    res.textContent = `✅ CORRECT! +${pts} pts`;
+    res.className = 'result-flash correct';
+    document.getElementById('mp-guess-row').style.display = 'none';
+    document.getElementById('mp-wait-btn').style.display = 'inline-block';
+
+    // Update score in room
+    await updateDoc(doc(db, 'rooms', roomId, 'players', currentUser.uid), {
+      score: mpMyScore,
+      guessedThisRound: true
+    });
+  } else {
+    const res = document.getElementById('mp-result');
+    res.textContent = '❌ Wrong!';
+    res.className = 'result-flash wrong';
+    setTimeout(() => { res.textContent = ''; }, 1500);
+  }
+};
+
+document.getElementById('mp-guess').addEventListener('keydown', e => {
+  if (e.key === 'Enter') mpSubmitGuess();
+});
+
+async function advanceRound(players) {
+  const nextRound = mpState.currentRound + 1;
+  const totalRounds = mpState.rounds;
+
+  // Reset guessedThisRound for all players
+  const batch = writeBatch(db);
+  players.forEach(p => {
+    batch.update(doc(db, 'rooms', roomId, 'players', p.id), { guessedThisRound: false });
+  });
+  await batch.commit();
+
+  if (nextRound > totalRounds) {
+    // Game over
+    await updateDoc(doc(db, 'rooms', roomId), { status: 'results' });
+  } else {
+    // Clear guesses for next round display
+    await updateDoc(doc(db, 'rooms', roomId), {
+      currentRound: nextRound,
+      roundStartedAt: serverTimestamp()
+    });
+  }
+}
+
+function showResults(roomData) {
+  showScreen('results');
+  // Load final player scores
+  const playersRef = collection(db, 'rooms', roomId, 'players');
+  getDocs(query(playersRef, orderBy('score', 'desc'))).then(snap => {
+    const table = document.getElementById('results-table');
+    table.innerHTML = '<tr><th>#</th><th>PLAYER</th><th>SCORE</th></tr>';
+    let rank = 1;
+    snap.forEach(d => {
+      const data = d.data();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${rank++}</td><td>${data.name}</td><td>${data.score}</td>`;
+      table.appendChild(tr);
+      // Save top score
+      if (d.id === currentUser.uid) saveScore(data.score);
+    });
+  });
+}
+
+window.playAgain = async () => {
+  if (isHost) {
+    // Reset room
+    const textures = pickTextures(mpState.rounds || 10);
+    const playersRef = collection(db, 'rooms', roomId, 'players');
+    const snap = await getDocs(playersRef);
+    const batch = writeBatch(db);
+    snap.forEach(d => batch.update(d.ref, { score: 0, guessedThisRound: false }));
+    await batch.commit();
+    await updateDoc(doc(db, 'rooms', roomId), {
+      status: 'lobby',
+      textures: [],
+      currentRound: 0
+    });
+    mpMyScore = 0;
+    document.getElementById('mp-score').textContent = '0';
+    showScreen('lobby-host');
+  } else {
+    gotoMenu();
+  }
+};
+</script>
 </body>
 </html>
-
