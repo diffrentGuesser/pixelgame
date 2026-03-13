@@ -564,7 +564,68 @@ function texURL(name) {
   return `https://assets.mcasset.cloud/1.21/assets/minecraft/textures/block/${name}.png`;
 }
 function fmtName(name) {
-  return name.replace(/_/g, ' ').trim();
+  // Strip face/variant/state suffix words from the display name
+  const STRIP_DISPLAY = new Set([
+    'side','top','bottom','front','back','inner','outer',
+    'left','right','tip','base','overlay','edge','corner',
+    'north','south','east','west','up','down',
+    'on','off','lit','unlit','open','closed',
+    'stage0','stage1','stage2','stage3','stage4','stage5','stage6','stage7',
+  ]);
+  const words = name.replace(/_/g, ' ').trim().toLowerCase().split(/\s+/);
+  const filtered = words.filter(w => !STRIP_DISPLAY.has(w));
+  const result = (filtered.length > 0 ? filtered : words).join(' ');
+  return result.charAt(0).toUpperCase() + result.slice(1);
+}
+
+// Words that are just texture face/variant suffixes — not part of the block name.
+// Stripped from BOTH the answer (filename) and the player's guess before comparing.
+const STRIP_WORDS = new Set([
+  'side', 'top', 'bottom', 'front', 'back', 'inner', 'outer',
+  'left', 'right', 'tip', 'base', 'overlay', 'edge', 'corner',
+  'north', 'south', 'east', 'west', 'up', 'down',
+  'on', 'off', 'lit', 'unlit', 'open', 'closed',
+  'stage0','stage1','stage2','stage3','stage4','stage5','stage6','stage7',
+]);
+
+// Words to ignore entirely from BOTH sides (filler + "block" since all textures are blocks)
+// This means "block of gold", "gold block", "block gold" all reduce to just "gold"
+// and "dried kelp block", "dried kelp", "block of dried kelp" all reduce to "dried kelp"
+const FILLER = new Set(['of', 'the', 'a', 'an', 'and', 'block']);
+
+// Checks if a guess matches the answer with order-independent word matching.
+// Examples:
+//   ✅ "gold block"          vs gold_block         → exact
+//   ✅ "block of gold"       vs gold_block         → reordered, "of" stripped
+//   ✅ "dried kelp"          vs dried_kelp_side    → "side" stripped from answer
+//   ✅ "dried kelp block"    vs dried_kelp_side    → "block" ignored (not in answer or guess core)
+//      wait — "block" IS a meaningful word, so:
+//   ✅ "dried kelp"          vs dried_kelp_side    → correct (side stripped, kelp+dried match)
+//   ❌ "dried kelp block"    vs dried_kelp_side    → "block" not in answer → wrong
+//      Actually we want "dried kelp block" to work for "dried_kelp_block_side" — so
+//      the stripping happens on the filename, producing the clean block name, and then
+//      both sides are compared as word-sets after stripping noise from BOTH.
+function isCorrectGuess(raw, answerName) {
+  const tokenise = str =>
+    str.toLowerCase()
+       .replace(/_/g, ' ')           // underscores → spaces
+       .replace(/[^a-z0-9 ]/g, '')   // strip punctuation
+       .split(/\s+/)
+       .filter(w => w.length > 0 && !FILLER.has(w) && !STRIP_WORDS.has(w));
+
+  const guessWords  = tokenise(raw);
+  const answerWords = tokenise(answerName); // answerName is the raw texture key
+
+  if (guessWords.length === 0 || answerWords.length === 0) return false;
+
+  // Both sets must contain exactly the same words (order-independent)
+  const guessSet  = new Set(guessWords);
+  const answerSet = new Set(answerWords);
+
+  for (const w of answerSet) if (!guessSet.has(w))  return false;
+  for (const w of guessSet)  if (!answerSet.has(w)) return false;
+
+  return true;
 }
 
 // pickN: for multiplayer — verify each texture actually loads (opaque) before committing
@@ -799,10 +860,7 @@ window.soloSubmitGuess = () => {
   if (!raw) return;
   input.value = '';
 
-  const guess   = raw.toLowerCase().replace(/\s+/g,'');
-  const correct = soloAnswer.toLowerCase().replace(/\s+/g,'');
-
-  if (guess === correct) {
+  if (isCorrectGuess(raw, soloAnswer)) {
     const pts = Math.max(1, PIX_LEVELS.length + 1 - soloAttempts);
     soloScore += pts;
     document.getElementById('solo-score').textContent = soloScore;
@@ -1092,8 +1150,7 @@ window.mpSubmitGuess = async () => {
 
   const round  = mpState.currentRound;
   const name   = mpState.textures[round - 1];
-  const answer = fmtName(name).toLowerCase().replace(/\s+/g,'');
-  const correct = raw.toLowerCase().replace(/\s+/g,'') === answer;
+  const correct = isCorrectGuess(raw, name);
 
   if (correct) {
     const pts = Math.max(1, PIX_LEVELS.length + 1 - mpAttempts);
