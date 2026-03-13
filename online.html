@@ -238,16 +238,7 @@
     .tab-panel { display: none; width: 100%; }
     .tab-panel.active { display: block; }
 
-    .guess-log {
-      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
-      border-radius: 3px; padding: 8px;
-      max-height: 150px; overflow-y: auto;
-      font-size: 16px; display: flex; flex-direction: column; gap: 4px;
-    }
-    .guess-log-entry { color: var(--muted); }
-    .guess-log-entry .gname { color: var(--text); }
-    .guess-log-entry.gcorrect .gname { color: var(--correct); }
-    .guess-log-entry.gcorrect { color: var(--correct); }
+
 
     .round-banner {
       font-family: 'Press Start 2P', monospace;
@@ -405,7 +396,7 @@
   <div class="status-bar">
     <div class="stat"><div class="stat-label">ROUND</div>   <div class="stat-value" id="mp-round">1/10</div></div>
     <div class="stat"><div class="stat-label">MY SCORE</div><div class="stat-value" id="mp-score">0</div></div>
-    <div class="stat"><div class="stat-label">GUESSED</div> <div class="stat-value" id="mp-guessed">0/0</div></div>
+    <div class="stat"><div class="stat-label">TRIES</div>   <div class="stat-value" id="mp-tries">4</div></div>
   </div>
   <div id="mp-round-banner" class="round-banner" style="display:none"></div>
   <div class="image-frame">
@@ -423,10 +414,6 @@
   <div class="card" style="max-width:480px;width:100%">
     <div class="card-title">PLAYERS</div>
     <div class="player-list" id="mp-player-list"></div>
-  </div>
-  <div class="card" style="max-width:480px;width:100%">
-    <div class="card-title">GUESS LOG</div>
-    <div class="guess-log" id="mp-guess-log"></div>
   </div>
 </div>
 
@@ -553,8 +540,8 @@ function pickN(n) {
 // ── App state ──────────────────────────────────────────────────────────────────
 let currentUser = null, displayName = 'Player', isGuest = false;
 let roomId = null, roomUnsub = null, isHost = false;
-let mpState = {}, mpMyScore = 0, mpHasGuessed = false;
-let mpRevealTimer = null, mpCurrentCanvas = null, mpPixLevel = 0;
+let mpState = {}, mpMyScore = 0, mpDoneThisRound = false;
+let mpCurrentCanvas = null, mpPixLevel = 0, mpAttempts = 0;
 let mpPrevRound = -1, mpPrevStatus = '';
 let advanceQueued = false;
 
@@ -900,11 +887,10 @@ window.leaveRoom = async () => {
 
 function cleanupRoom() {
   if (roomUnsub)      { roomUnsub(); roomUnsub = null; }
-  if (mpRevealTimer)  { clearInterval(mpRevealTimer); mpRevealTimer = null; }
   roomId = null; isHost = false; mpState = {};
-  mpMyScore = 0; mpHasGuessed = false;
+  mpMyScore = 0; mpDoneThisRound = false;
   mpPrevRound = -1; mpPrevStatus = '';
-  mpCurrentCanvas = null; mpPixLevel = 0;
+  mpCurrentCanvas = null; mpPixLevel = 0; mpAttempts = 0;
   advanceQueued = false;
 }
 
@@ -923,14 +909,16 @@ function subscribeRoom() {
     if (data.status === 'playing') {
       const round = data.currentRound;
 
+      // Only trigger setup on a new round
       if (mpPrevStatus !== 'playing' || mpPrevRound !== round) {
         mpPrevStatus = 'playing'; mpPrevRound = round;
-        // Clear previous round state
-        if (mpRevealTimer) { clearInterval(mpRevealTimer); mpRevealTimer = null; }
-        mpHasGuessed = false; mpCurrentCanvas = null; mpPixLevel = 0; advanceQueued = false;
+        mpDoneThisRound = false; mpCurrentCanvas = null;
+        mpPixLevel = 0; mpAttempts = 0; advanceQueued = false;
 
         // UI reset
         document.getElementById('mp-round').textContent = round + '/' + data.rounds;
+        document.getElementById('mp-tries').textContent = String(PIX_LEVELS.length);
+        document.getElementById('mp-score').textContent = mpMyScore;
         document.getElementById('mp-result').textContent = '';
         document.getElementById('mp-result').className = 'result-flash';
         document.getElementById('mp-guess').value = '';
@@ -950,7 +938,6 @@ function subscribeRoom() {
         const name = data.textures[round - 1];
         setImg('mp-img-wrap', 'loader', null);
 
-        // Try loading; retry a few times in case of network hiccup
         let canvas = null;
         for (let attempt = 0; attempt < 6 && !canvas; attempt++) {
           canvas = await loadCanvas(texURL(name));
@@ -963,33 +950,17 @@ function subscribeRoom() {
           return;
         }
         mpCurrentCanvas = canvas;
-
-        // Show most pixelated first
+        // Show most pixelated first (same as solo)
         setImg('mp-img-wrap', pixelate(mpCurrentCanvas, PIX_LEVELS[0]), null);
-
-        // Progressively reveal every 8 seconds
-        mpRevealTimer = setInterval(() => {
-          if (mpHasGuessed) return;
-          mpPixLevel++;
-          if (mpPixLevel < PIX_LEVELS.length) {
-            setImg('mp-img-wrap', pixelate(mpCurrentCanvas, PIX_LEVELS[mpPixLevel]), null);
-          } else {
-            clearInterval(mpRevealTimer); mpRevealTimer = null;
-            setImg('mp-img-wrap', null, mpCurrentCanvas);
-          }
-        }, 8000);
       }
     }
 
     if (data.status === 'results') {
-      if (mpRevealTimer) { clearInterval(mpRevealTimer); mpRevealTimer = null; }
       showResults();
     }
   });
 
   // ── Players sub-collection ──
-  // FIX: use orderBy('joinedAt') to avoid needing a composite Firestore index.
-  // Without the correct index, orderBy('score') silently returns 0 documents.
   const unsubPlayers = onSnapshot(
     query(collection(db, 'rooms', roomId, 'players'), orderBy('joinedAt', 'asc')),
     snap => {
@@ -1000,26 +971,7 @@ function subscribeRoom() {
     }
   );
 
-  // ── Guess log sub-collection ──
-  const unsubGuesses = onSnapshot(
-    query(collection(db, 'rooms', roomId, 'guesses'), orderBy('ts', 'asc'), limit(80)),
-    snap => {
-      const log = document.getElementById('mp-guess-log');
-      log.innerHTML = '';
-      const curRound = mpState.currentRound;
-      snap.forEach(d => {
-        const g = d.data();
-        if (g.round !== curRound) return;
-        const el = document.createElement('div');
-        el.className = 'guess-log-entry' + (g.correct ? ' gcorrect' : '');
-        el.innerHTML = `<span class="gname">${g.playerName}</span>: ${g.correct ? '✅ guessed it!' : `"${g.guess}"`}`;
-        log.appendChild(el);
-      });
-      log.scrollTop = log.scrollHeight;
-    }
-  );
-
-  roomUnsub = () => { unsubRoom(); unsubPlayers(); unsubGuesses(); };
+  roomUnsub = () => { unsubRoom(); unsubPlayers(); };
 }
 
 function renderLobbyList(players) {
@@ -1046,28 +998,45 @@ function renderMPList(players) {
   const el = document.getElementById('mp-player-list');
   if (!el) return;
   el.innerHTML = '';
-  // Sort by score desc for in-game view
   const sorted = [...players].sort((a, b) => b.score - a.score);
-  let guessed = 0;
+  let doneCount = 0;
   sorted.forEach(p => {
-    if (p.guessedThisRound) guessed++;
+    if (p.guessedThisRound) doneCount++;
     const div = document.createElement('div');
     div.className = 'player-item' + (p.guessedThisRound ? ' guessed' : '');
     const hb = p.id === mpState.host ? '<span class="player-badge">HOST</span>' : '';
-    div.innerHTML = `<span>${p.name} ${hb}</span><span class="player-score-badge">${p.score} pts</span>`;
+    // Show ✅ if done, animated dots if still playing — no guesses exposed
+    const status = p.guessedThisRound
+      ? `<span style="color:var(--accent)">✅</span>`
+      : `<span class="waiting-pulse" style="font-size:14px">●●●</span>`;
+    div.innerHTML = `<span>${p.name} ${hb}</span><span style="display:flex;align-items:center;gap:8px">${status} <span class="player-score-badge">${p.score} pts</span></span>`;
     el.appendChild(div);
   });
-  document.getElementById('mp-guessed').textContent = `${guessed}/${players.length}`;
 
-  // Host advances round once everyone has guessed
-  if (isHost && mpState.status === 'playing' && players.length > 0 && guessed >= players.length && !advanceQueued) {
+  // Host advances round once all players are done
+  if (isHost && mpState.status === 'playing' && players.length > 0 && doneCount >= players.length && !advanceQueued) {
     advanceQueued = true;
-    setTimeout(() => advanceRound(players), 2500);
+    setTimeout(() => advanceRound(players), 2000);
   }
 }
 
+// Helper: called when the player has exhausted all tries or guessed correctly —
+// reveals the full image and marks them done in Firestore.
+async function mpFinishRound(pts) {
+  mpDoneThisRound = true;
+  document.getElementById('mp-guess-row').style.display = 'none';
+  document.getElementById('mp-wait-btn').style.display = 'inline-block';
+  if (mpCurrentCanvas) setImg('mp-img-wrap', null, mpCurrentCanvas);
+  const name = mpState.textures[mpState.currentRound - 1];
+  document.getElementById('mp-hint').textContent = `It was: ${fmtName(name)}`;
+  // Write score update and mark done
+  await updateDoc(doc(db, 'rooms', roomId, 'players', currentUser.uid), {
+    score: mpMyScore, guessedThisRound: true
+  });
+}
+
 window.mpSubmitGuess = async () => {
-  if (mpHasGuessed || !mpState.textures) return;
+  if (mpDoneThisRound || !mpState.textures) return;
   const input = document.getElementById('mp-guess');
   const raw = input.value.trim();
   if (!raw) return;
@@ -1077,32 +1046,41 @@ window.mpSubmitGuess = async () => {
   const name   = mpState.textures[round - 1];
   const answer = fmtName(name).toLowerCase().replace(/\s+/g,'');
   const correct = raw.toLowerCase().replace(/\s+/g,'') === answer;
-  const pts     = correct ? Math.max(1, PIX_LEVELS.length + 1 - mpPixLevel) : 0;
-
-  // Log guess (visible to all players)
-  await setDoc(doc(collection(db, 'rooms', roomId, 'guesses')), {
-    playerName: displayName,
-    guess: correct ? '[correct]' : raw,
-    correct, round, ts: serverTimestamp()
-  });
 
   if (correct) {
-    mpHasGuessed = true;
+    const pts = Math.max(1, PIX_LEVELS.length + 1 - mpAttempts);
     mpMyScore += pts;
     document.getElementById('mp-score').textContent = mpMyScore;
     document.getElementById('mp-result').textContent = `✅ CORRECT! +${pts} pts`;
     document.getElementById('mp-result').className = 'result-flash correct';
-    document.getElementById('mp-hint').textContent = `It was: ${fmtName(name)}`;
-    document.getElementById('mp-guess-row').style.display = 'none';
-    document.getElementById('mp-wait-btn').style.display = 'inline-block';
-    if (mpCurrentCanvas) setImg('mp-img-wrap', null, mpCurrentCanvas);
-    await updateDoc(doc(db, 'rooms', roomId, 'players', currentUser.uid), {
-      score: mpMyScore, guessedThisRound: true
-    });
-  } else {
-    document.getElementById('mp-result').textContent = '❌ Wrong!';
+    document.getElementById('mp-tries').textContent = '0';
+    await mpFinishRound(pts);
+    return;
+  }
+
+  // Wrong guess — advance pixelation level (same as solo)
+  mpAttempts++;
+  mpPixLevel++;
+  const triesLeft = Math.max(0, PIX_LEVELS.length - mpAttempts);
+  document.getElementById('mp-tries').textContent = String(triesLeft);
+
+  if (mpAttempts > PIX_LEVELS.length) {
+    // Out of tries
+    document.getElementById('mp-result').textContent = `😢 It was: ${fmtName(name)}`;
     document.getElementById('mp-result').className = 'result-flash wrong';
-    setTimeout(() => { document.getElementById('mp-result').textContent = ''; }, 1500);
+    await mpFinishRound(0);
+  } else {
+    // Reveal more detail
+    if (mpPixLevel < PIX_LEVELS.length) {
+      setImg('mp-img-wrap', pixelate(mpCurrentCanvas, PIX_LEVELS[mpPixLevel]), null);
+    } else {
+      setImg('mp-img-wrap', null, mpCurrentCanvas); // full image on last try
+    }
+    const isLast = mpAttempts === PIX_LEVELS.length;
+    document.getElementById('mp-result').textContent = isLast
+      ? '❌ Last chance — full image shown!'
+      : '❌ Wrong! More detail revealed...';
+    document.getElementById('mp-result').className = 'result-flash wrong';
   }
 };
 
