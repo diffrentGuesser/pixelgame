@@ -173,12 +173,15 @@
 
     .room-code-display {
       font-family: 'Press Start 2P', monospace;
-      font-size: clamp(28px, 8vw, 48px);
+      font-size: clamp(22px, 6vw, 40px);
       color: var(--gold);
       text-shadow: 0 0 20px var(--gold);
-      letter-spacing: 8px;
+      letter-spacing: 0.15em;
       text-align: center;
-      padding: 20px;
+      padding: 16px 8px;
+      width: 100%;
+      overflow: hidden;
+      word-break: break-all;
     }
 
     .player-list { width: 100%; display: flex; flex-direction: column; gap: 6px; }
@@ -457,7 +460,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, limit, getDocs, serverTimestamp, writeBatch
+  onSnapshot, query, orderBy, getDocs, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ── Firebase init ──────────────────────────────────────────────────────────────
