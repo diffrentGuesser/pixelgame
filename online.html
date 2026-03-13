@@ -21,8 +21,8 @@
       --gold: #ffd700;
     }
 
-
-html { box-sizing: border-box; }
+```
+html { box-sizing: border-box; background: #0a0a0f; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -31,6 +31,7 @@ body {
   font-family: 'VT323', monospace;
   font-size: 20px;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   overflow-x: hidden;
 }
 
@@ -283,6 +284,8 @@ select {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 @media(max-width:480px) { body{font-size:18px} .card{padding:16px} }
+```
+
   </style>
 </head>
 <body>
@@ -299,7 +302,6 @@ select {
       <button class="tab-btn"        id="tab-btn-guest"  onclick="switchTab('guest')">GUEST</button>
     </div>
 
-```
 <div id="tab-login" class="tab-panel active">
   <input type="email"    id="auth-email"    placeholder="email@example.com" />
   <input type="password" id="auth-password" placeholder="password" />
@@ -322,7 +324,6 @@ select {
 </div>
 
 <div class="error-msg" id="auth-error"></div>
-```
 
   </div>
 </div>
