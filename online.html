@@ -475,55 +475,89 @@ const app  = initializeApp({
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// ── Texture list (solid blocks only, verified names) ──────────────────────────
+// ── Texture list — ONLY fully opaque/solid blocks (no leaves, flowers, glass, chain, coral, saplings etc.) ──
 const TEXTURE_NAMES = [
-  "acacia_leaves","acacia_log","acacia_planks","acacia_sapling",
-  "allium","amethyst_block","andesite","anvil",
-  "azalea_leaves","azure_bluet","bamboo_block","bamboo_mosaic","bamboo_planks",
-  "beacon","bedrock","bookshelf","bricks","calcite","chain",
-  "cherry_leaves","cherry_log","cherry_planks","cherry_sapling",
-  "clay","coal_block","coal_ore","coarse_dirt","cobbled_deepslate","cobblestone",
-  "comparator","conduit","copper_block","copper_grate","copper_ore","cornflower",
-  "dandelion","dark_prismarine","deepslate","deepslate_bricks","deepslate_tiles",
-  "diamond_block","diamond_ore","diorite","dirt","dripstone_block",
-  "emerald_block","emerald_ore","end_stone",
-  "farmland","gilded_blackstone","glass","glowstone",
-  "gold_block","gold_ore","granite","grass_block_top","gravel",
-  "honeycomb_block","ice","iron_block","iron_ore","lapis_block","lapis_ore",
-  "magma","moss_block","mossy_cobblestone","mud","mud_bricks",
-  "mushroom_stem","netherite_block","netherrack","note_block",
-  "oak_leaves","oak_log","oak_planks","oak_sapling","obsidian",
-  "packed_ice","poppy","prismarine","prismarine_bricks","pumpkin_side",
-  "purpur_block","quartz_bricks",
-  "raw_copper_block","raw_gold_block","raw_iron_block",
-  "red_sand","red_sandstone","redstone_block","redstone_lamp","redstone_ore",
-  "rooted_dirt","sand","sandstone","sculk","sea_lantern","shroomlight",
-  "slime_block","smooth_basalt","smooth_stone","snow","soul_sand","soul_soil",
-  "spawner","sponge","stone","stone_bricks","terracotta","tinted_glass",
-  "tuff","tuff_bricks","warped_planks","wet_sponge",
-  "white_wool","red_wool","blue_wool","green_wool","yellow_wool",
-  "black_wool","gray_wool","pink_wool","orange_wool","cyan_wool",
-  "purple_wool","lime_wool","light_blue_wool","magenta_wool","light_gray_wool",
+  // Stone & rock variants
+  "stone","stone_bricks","cracked_stone_bricks","mossy_stone_bricks","chiseled_stone_bricks",
+  "cobblestone","mossy_cobblestone","andesite","polished_andesite",
+  "diorite","polished_diorite","granite","polished_granite",
+  "deepslate","deepslate_bricks","cracked_deepslate_bricks","deepslate_tiles","cobbled_deepslate",
+  "smooth_stone","calcite","tuff","tuff_bricks","dripstone_block",
+  // Dirt & soil
+  "dirt","coarse_dirt","rooted_dirt","mud","packed_mud","mud_bricks",
+  "gravel","sand","red_sand","soul_sand","soul_soil",
+  "grass_block_top","mycelium_top","podzol_top","farmland","farmland_moist",
+  // Wood logs & planks (logs are fully opaque)
+  "oak_log","oak_planks",
+  "birch_log","birch_planks",
+  "spruce_log","spruce_planks",
+  "jungle_log","jungle_planks",
+  "acacia_log","acacia_planks",
+  "dark_oak_log","dark_oak_planks",
+  "mangrove_log","mangrove_planks",
+  "cherry_log","cherry_planks",
+  "bamboo_block","bamboo_planks","bamboo_mosaic",
+  "warped_planks","crimson_planks",
+  "stripped_oak_log","stripped_birch_log","stripped_spruce_log",
+  "stripped_jungle_log","stripped_acacia_log","stripped_dark_oak_log",
+  // Ores
+  "coal_ore","iron_ore","copper_ore","gold_ore","diamond_ore",
+  "emerald_ore","lapis_ore","redstone_ore",
+  "deepslate_coal_ore","deepslate_iron_ore","deepslate_copper_ore",
+  "deepslate_gold_ore","deepslate_diamond_ore","deepslate_emerald_ore",
+  "deepslate_lapis_ore","deepslate_redstone_ore",
+  "nether_gold_ore","nether_quartz_ore","ancient_debris_side",
+  // Metal & mineral blocks
+  "iron_block","gold_block","diamond_block","emerald_block",
+  "lapis_block","coal_block","redstone_block","netherite_block",
+  "amethyst_block","raw_iron_block","raw_gold_block","raw_copper_block",
+  "copper_block","exposed_copper","weathered_copper","oxidized_copper",
+  "cut_copper","exposed_cut_copper","weathered_cut_copper","oxidized_cut_copper",
+  // Ice & frozen
+  "ice","packed_ice","blue_ice",
+  // Nether blocks
+  "netherrack","nether_bricks","red_nether_bricks","blackstone","gilded_blackstone",
+  "polished_blackstone","polished_blackstone_bricks","soul_sand","soul_soil",
+  "crimson_nylium","warped_nylium","basalt_side","smooth_basalt",
+  "nether_wart_block","warped_wart_block","shroomlight","magma",
+  // End blocks
+  "end_stone","end_stone_bricks","purpur_block","purpur_pillar",
+  // Decorative / crafted
+  "bricks","sandstone","red_sandstone","chiseled_sandstone","chiseled_red_sandstone",
+  "quartz_bricks","prismarine","prismarine_bricks","dark_prismarine",
+  "obsidian","crying_obsidian","bedrock","bookshelf","note_block",
+  "jukebox_side","crafting_table_top","crafting_table_front",
+  "furnace_front","blast_furnace_front","smoker_front",
+  "hay_block_side","hay_block_top","honeycomb_block",
+  "honey_block_side","slime_block","sponge","wet_sponge",
+  "sea_lantern","glowstone","redstone_lamp","beacon",
+  "sculk","moss_block","mud_bricks","packed_mud",
+  "snow","clay","terracotta",
+  "white_terracotta","orange_terracotta","magenta_terracotta","light_blue_terracotta",
+  "yellow_terracotta","lime_terracotta","pink_terracotta","cyan_terracotta",
+  "purple_terracotta","blue_terracotta","brown_terracotta","green_terracotta",
+  "red_terracotta","black_terracotta","gray_terracotta","light_gray_terracotta",
+  // Wool
+  "white_wool","orange_wool","magenta_wool","light_blue_wool",
+  "yellow_wool","lime_wool","pink_wool","cyan_wool",
+  "purple_wool","blue_wool","brown_wool","green_wool",
+  "red_wool","black_wool","gray_wool","light_gray_wool",
+  // Concrete
   "white_concrete","orange_concrete","magenta_concrete","light_blue_concrete",
   "yellow_concrete","lime_concrete","pink_concrete","cyan_concrete",
   "purple_concrete","blue_concrete","brown_concrete","green_concrete",
   "red_concrete","black_concrete","gray_concrete","light_gray_concrete",
-  "birch_log","birch_planks","birch_leaves",
-  "spruce_log","spruce_planks","spruce_leaves",
-  "jungle_log","jungle_planks","jungle_leaves",
-  "dark_oak_log","dark_oak_planks","dark_oak_leaves",
-  "mangrove_log","mangrove_planks","mangrove_leaves",
-  "blue_ice","packed_mud",
-  "deepslate_coal_ore","deepslate_copper_ore","deepslate_diamond_ore",
-  "deepslate_gold_ore","deepslate_iron_ore","deepslate_lapis_ore",
-  "oxidized_copper","weathered_copper","exposed_copper","cut_copper",
-  "nether_bricks","red_nether_bricks",
-  "brain_coral_block","bubble_coral_block",
-  "fire_coral_block","horn_coral_block","tube_coral_block",
-  "white_terracotta","orange_terracotta","light_blue_terracotta",
-  "yellow_terracotta","lime_terracotta","pink_terracotta","cyan_terracotta",
-  "purple_terracotta","blue_terracotta","brown_terracotta","green_terracotta",
-  "red_terracotta","black_terracotta","gray_terracotta","light_gray_terracotta"
+  // Concrete powder
+  "white_concrete_powder","orange_concrete_powder","magenta_concrete_powder",
+  "yellow_concrete_powder","lime_concrete_powder","pink_concrete_powder",
+  "cyan_concrete_powder","blue_concrete_powder","brown_concrete_powder",
+  "green_concrete_powder","red_concrete_powder","black_concrete_powder",
+  "gray_concrete_powder","light_gray_concrete_powder",
+  // Misc solid
+  "pumpkin_side","pumpkin_top","melon_side","melon_top",
+  "dried_kelp_side","dried_kelp_top","mushroom_stem","brown_mushroom_block","red_mushroom_block",
+  "target_side","target_top","lodestone_side","lodestone_top",
+  "smooth_basalt","polished_basalt_side","polished_basalt_top",
 ];
 
 function texURL(name) {
@@ -532,10 +566,16 @@ function texURL(name) {
 function fmtName(name) {
   return name.replace(/_/g, ' ').trim();
 }
-function pickN(n) {
-  const pool = [...TEXTURE_NAMES], out = [];
+
+// pickN: for multiplayer — verify each texture actually loads (opaque) before committing
+async function pickN(n) {
+  const pool = [...TEXTURE_NAMES];
+  const out = [];
   while (out.length < n && pool.length) {
-    out.push(pool.splice(Math.random() * pool.length | 0, 1)[0]);
+    const idx = Math.random() * pool.length | 0;
+    const name = pool.splice(idx, 1)[0];
+    const canvas = await loadCanvas(texURL(name));
+    if (canvas) out.push(name);
   }
   return out;
 }
@@ -866,14 +906,19 @@ window.doJoinRoom = async () => {
 };
 
 window.startRoom = async () => {
-  const rounds   = parseInt(document.getElementById('lobby-rounds').value);
-  const textures = pickN(rounds);
+  const rounds = parseInt(document.getElementById('lobby-rounds').value);
+  const btn = document.querySelector('#screen-lobby-host .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'LOADING...'; }
   try {
+    const textures = await pickN(rounds); // verify each texture loads before storing
     await updateDoc(doc(db, 'rooms', roomId), {
       status: 'playing', rounds, textures,
       currentRound: 1, roundStartedAt: serverTimestamp()
     });
-  } catch(e) { setErr('lobby-error', e.message); }
+  } catch(e) {
+    setErr('lobby-error', e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'START GAME'; }
+  }
 };
 
 window.cancelRoom = async () => {
